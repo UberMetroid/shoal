@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="shoal@ubermetroid.github.io">
+  <schema id="org.gnome.shell.extensions.shoal" path="/org/gnome/shell/extensions/shoal/">
+    <key name="tray-pos" type="s">
+      <default>'right'</default>
+      <summary>Top bar position for tray indicators</summary>
+      <description>Anchor position in the GNOME Shell top bar: 'right', 'center', or 'left'.</description>
+    </key>
+    <key name="tray-order" type="u">
+      <default>1</default>
+      <summary>Order index within top bar box</summary>
+      <description>Placement index (0–10) inside the selected top bar box.</description>
+    </key>
+    <key name="compact-mode" type="b">
+      <default>true</default>
+      <summary>Compact horizontal spacing between tray icons</summary>
+      <description>Reduces horizontal padding between Shoal top-bar indicators.</description>
+    </key>
+    <key name="icon-size" type="u">
+      <default>0</default>
+      <summary>Custom tray icon size override in pixels</summary>
+      <description>0 uses automatic GNOME top-bar scaling; 16–48 overrides the icon size in pixels.</description>
+    </key>
+    <key name="icon-opacity" type="u">
+      <default>255</default>
+      <summary>Tray icon opacity (64–255)</summary>
+      <description>Alpha opacity applied to top-bar indicator icons (64–255).</description>
+    </key>
+    <key name="icon-saturation" type="d">
+      <default>0.0</default>
+      <summary>Tray icon desaturation factor (0.0–1.0)</summary>
+      <description>0.0 renders full color icons; 1.0 fully desaturates icons to monochrome.</description>
+    </key>
+    <key name="icon-brightness" type="d">
+      <default>0.0</default>
+      <summary>Tray icon brightness shift (-1.0–1.0)</summary>
+      <description>Brightness adjustment applied via Clutter.BrightnessContrastEffect (-1.0 to 1.0).</description>
+    </key>
+    <key name="icon-contrast" type="d">
+      <default>0.0</default>
+      <summary>Tray icon contrast shift (-1.0–1.0)</summary>
+      <description>Contrast adjustment applied via Clutter.BrightnessContrastEffect (-1.0 to 1.0).</description>
+    </key>
+    <key name="legacy-tray-enabled" type="b">
+      <default>true</default>
+      <summary>Enable XWayland legacy system tray icons</summary>
+      <description>Embeds X11/XWayland system tray icons via Shell.TrayManager when enabled.</description>
+    </key>
+    <key name="middle-click-action" type="s">
+      <default>'secondary-activate'</default>
+      <summary>Middle-click action on tray indicators</summary>
+      <description>Action on middle-click: 'secondary-activate', 'open-menu', or 'none'.</description>
+    </key>
+    <key name="scroll-enabled" type="b">
+      <default>true</default>
+      <summary>Forward mouse-wheel scroll events to tray applications</summary>
+      <description>Forwards vertical and horizontal scroll wheel deltas via StatusNotifierItem.Scroll.</description>
+    </key>
+    <key name="show-settings-in-menu" type="b">
+      <default>true</default>
+      <summary>Show Shoal Settings shortcut in indicator menus</summary>
+      <description>Appends a "Shoal Settings &amp; About…" item to indicator popup menus.</description>
+    </key>
+    <key name="custom-icons" type="a(sss)">
+      <default>[]</default>
+      <summary>Custom icon theme overrides per indicator ID</summary>
+      <description>Array of (indicator_id, normal_icon_name, attention_icon_name) tuples.</description>
+    </key>
+  </schema>
+</schemalist>

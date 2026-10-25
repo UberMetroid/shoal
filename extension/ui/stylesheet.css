@@ -1,0 +1,30 @@
+.shoal-indicator {
+    -natural-hpadding: 8px;
+    -minimum-hpadding: 6px;
+}
+
+.shoal-indicator-compact {
+    -natural-hpadding: 4px;
+    -minimum-hpadding: 3px;
+}
+
+.shoal-indicator-box {
+    spacing: 4px;
+}
+
+.shoal-indicator-icon {
+    icon-size: 16px;
+}
+
+.shoal-indicator-label {
+    font-size: 0.9em;
+    y-align: center;
+}
+
+.shoal-indicator-attention .shoal-indicator-icon {
+    color: #f66151;
+}
+
+.shoal-legacy-tray-icon {
+    padding: 0px 2px;
+}
