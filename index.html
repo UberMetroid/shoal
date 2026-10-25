@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shoal — Wayland-Native AppIndicator & System Tray for GNOME 45–50</title>
+  <meta name="description" content="Zero-subprocess, Wayland-native AppIndicator, KStatusNotifierItem, DBusMenu, and legacy system tray extension for GNOME Shell 45–50. Built to pair with Kelp and Reef.">
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --surface: #12161c;
+      --surface-alt: #181d25;
+      --border: #262e3b;
+      --accent: #f66151;
+      --shoal: #5bc8af;
+      --reef: #6ad7e1;
+      --kelp: #2ee59d;
+      --text: #eef2f6;
+      --muted: #9aa5b4;
+      --mono: ui-monospace, "JetBrains Mono", "Fira Code", SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Cantarell", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--shoal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    header {
+      border-bottom: 1px solid var(--border);
+      background: rgba(11, 13, 16, 0.88);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--text);
+    }
+    .brand-badge {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      color: var(--shoal);
+    }
+    .nav-links { display: flex; gap: 20px; font-size: 0.92rem; }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .hero { padding: 72px 0 56px; text-align: center; }
+    .eyebrow {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--shoal);
+      background: rgba(91, 200, 175, 0.1);
+      border: 1px solid rgba(91, 200, 175, 0.3);
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      max-width: 820px;
+      margin: 0 auto 18px;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.12rem;
+      max-width: 740px;
+      margin: 0 auto 32px;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: var(--muted); text-decoration: none; }
+    .btn-primary {
+      background: var(--shoal);
+      color: #051317;
+      border-color: var(--shoal);
+    }
+    .desktop-frame {
+      background: #07090b;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      text-align: left;
+      position: relative;
+    }
+    .gnome-bar {
+      background: #13171e;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .tray-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--shoal);
+    }
+    .tray-chip {
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+    }
+    section { padding: 56px 0; border-top: 1px solid var(--border); }
+    h2 { font-size: 1.8rem; margin-bottom: 12px; }
+    .section-lead { color: var(--muted); margin-bottom: 28px; }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px;
+    }
+    .card h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--shoal); }
+    .card p { color: var(--muted); font-size: 0.94rem; }
+    code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      background: var(--surface-alt);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: #d7e0ea;
+      margin-top: 12px;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 36px 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <span>🐟 Shoal</span>
+        <span class="brand-badge">v1.0.0 · GNOME 45–50</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="https://ubermetroid.github.io/kelp/">Kelp Tiler</a>
+        <a href="https://ubermetroid.github.io/reef/">Reef Dock</a>
+        <a href="https://ubermetroid.github.io/tuition-not-coffee">🎓 Tuition, Not Coffee</a>
+        <a href="https://github.com/UberMetroid/shoal">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="border-top: none;">
+      <span class="eyebrow">shoal@ubermetroid.github.io · Wayland-First · Zero Subprocesses</span>
+      <h1>Wayland-Native AppIndicator &amp; System Tray Built to Pair with Kelp &amp; Reef</h1>
+      <p class="subtitle">
+        Shoal brings zero-subprocess KStatusNotifierItem (<code>SNI</code>), Ayatana AppIndicator, native <code>com.canonical.dbusmenu</code> popup menus, XWayland legacy tray embedding, Clutter shader effects, and custom per-app icon overrides to GNOME Shell 45–50.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/UberMetroid/shoal/releases/latest">⬇ Download Shoal v1.0.0 (.zip)</a>
+        <a class="btn" href="https://github.com/UberMetroid/shoal">⭐ Star on GitHub</a>
+        <a class="btn" href="https://ubermetroid.github.io/tuition-not-coffee">🎓 Tuition, Not Coffee — Help send my daughter to college</a>
+      </div>
+
+      <div class="desktop-frame">
+        <div class="gnome-bar">
+          <span>Activities</span>
+          <span>GNOME 45–50 Wayland</span>
+          <div class="tray-cluster">
+            <span class="tray-chip">Steam</span>
+            <span class="tray-chip">Discord</span>
+            <span class="tray-chip">Synology</span>
+            <span class="tray-chip">Nextcloud</span>
+            <span style="color: var(--kelp);">Kelp + Reef + Shoal</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Engineered for Kelp, Reef &amp; Modern GNOME</h2>
+      <p class="section-lead">Derived from Ubuntu AppIndicator Support and stripped of legacy subprocess scanners and GNOME 3 bloat.</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Zero-Subprocess D-Bus Watcher</h3>
+          <p>Owns <code>org.kde.StatusNotifierWatcher</code> and <code>org.freedesktop.StatusNotifierWatcher</code> and discovers running tray apps via async <code>Gio.DBus.session</code> calls—zero external helper processes and <code>0 shexli findings</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Universal App Packaging</h3>
+          <p>Supports Flatpak, Snap, AppImage, <code>.rpm</code>, <code>.deb</code>, <code>pacman</code>, Steam, Discord, and Electron via custom <code>IconThemePath</code> directories, themed icons, and ARGB32 <code>IconPixmap</code> byte streams.</p>
+        </div>
+        <div class="card">
+          <h3>Clutter Shaders &amp; Custom Icons</h3>
+          <p>Harmonize colorful third-party tray icons with your top bar using real-time monochrome desaturation, brightness/contrast shifts, or per-app symbolic icon overrides.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Quick Install</h2>
+      <p class="section-lead">Install from the latest GitHub Release bundle across Fedora, Debian, Ubuntu, Arch, openSUSE, and NixOS:</p>
+      <pre>gnome-extensions install --force shoal@ubermetroid.github.io.shell-extension.zip
+gnome-extensions enable shoal@ubermetroid.github.io</pre>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>
+        <strong>Shoal</strong> (<code>shoal@ubermetroid.github.io</code>) · Released under <a href="https://github.com/UberMetroid/shoal/blob/main/LICENSE">GPL-3.0-or-later</a> · Derived from Ubuntu AppIndicator Support (rgcjonas, Canonical Ltd., &amp; contributors).<br>
+        <a href="https://github.com/UberMetroid/shoal">⭐ Star on GitHub</a> · <a href="https://ubermetroid.github.io/tuition-not-coffee">🎓 Tuition, Not Coffee — Help send my daughter to college</a> · <a href="https://ubermetroid.github.io/kelp/">Kelp Auto-Tiler</a> · <a href="https://ubermetroid.github.io/reef/">Reef Dock</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
