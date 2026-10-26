@@ -148,9 +148,9 @@ export function argb32_to_rgba(src_bytes, pixel_count) {
         const r = src_bytes[i + 1];
         const g = src_bytes[i + 2];
         const b = src_bytes[i + 3];
-        out[i] = r;
-        out[i + 1] = g;
-        out[i + 2] = b;
+        out[i] = Math.round((r * a) / 255);
+        out[i + 1] = Math.round((g * a) / 255);
+        out[i + 2] = Math.round((b * a) / 255);
         out[i + 3] = a;
     }
     return out;

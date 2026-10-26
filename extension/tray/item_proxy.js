@@ -37,15 +37,17 @@ function unpack_pixmaps(dict, key) {
 }
 
 export class ItemProxy {
-    constructor(bus_name, obj_path, on_update) {
+    constructor(bus_name, obj_path, on_update, on_invalid = null) {
         this.bus_name = bus_name;
         this.obj_path = obj_path;
         this.key = `${bus_name}${obj_path}`;
         this.on_update = on_update;
+        this.on_invalid = on_invalid;
         this.iface_name = 'org.kde.StatusNotifierItem';
         this.cancellable = new Gio.Cancellable();
         this._sub_ids = [];
         this._refresh_timer = 0;
+        this._has_loaded = false;
 
         this.id = '';
         this.title = '';
@@ -110,15 +112,14 @@ export class ItemProxy {
                     const reply = conn.call_finish(res);
                     const [dict] = reply.unpack();
                     const props = dict.deep_unpack();
-                    if (Object.keys(props).length === 0 && iface_idx + 1 < SNI_IFACES.length) {
-                        this.refresh_properties(iface_idx + 1);
-                        return;
-                    }
                     this.iface_name = candidate;
+                    this._has_loaded = true;
                     this._apply_props(props);
                 } catch (_e) {
                     if (iface_idx + 1 < SNI_IFACES.length) {
                         this.refresh_properties(iface_idx + 1);
+                    } else if (!this._has_loaded && typeof this.on_invalid === 'function') {
+                        this.on_invalid();
                     }
                 }
             },
@@ -196,5 +197,6 @@ export class ItemProxy {
         }
         this._sub_ids.length = 0;
         this.on_update = null;
+        this.on_invalid = null;
     }
 }

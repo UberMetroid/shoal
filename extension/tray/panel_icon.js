@@ -51,6 +51,8 @@ class ShoalPanelIcon extends PanelMenu.Button {
         this.dbus_menu = null;
         this._desat_fx = null;
         this._bc_fx = null;
+        this._icon_key = '';
+        this._last_show_prefs = null;
 
         this.add_style_class_name('shoal-indicator');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box shoal-indicator-box' });
@@ -59,16 +61,14 @@ class ShoalPanelIcon extends PanelMenu.Button {
             fallback_icon_name: 'application-x-executable-symbolic',
         });
         this._label = new St.Label({
-            style_class: 'shoal-indicator-label',
-            y_align: Clutter.ActorAlign.CENTER,
-            visible: false,
+            style_class: 'shoal-indicator-label', y_align: Clutter.ActorAlign.CENTER, visible: false,
         });
         this._box.add_child(this._icon);
         this._box.add_child(this._label);
         this.add_child(this._box);
 
-        this.connect('event', (_actor, event) => this._on_event(event));
-        this.menu.connect('open-state-changed', (_menu, is_open) => {
+        this._evt_id = this.connect('event', (_actor, event) => this._on_event(event));
+        this._menu_id = this.menu.connect('open-state-changed', (_menu, is_open) => {
             if (is_open && this.dbus_menu) this.dbus_menu.about_to_show(0);
         });
         this.sync_from_proxy();
@@ -101,10 +101,11 @@ class ShoalPanelIcon extends PanelMenu.Button {
             ? this.proxy.attention_icon_name : this.proxy.icon_name;
 
         if (wanted) {
+            const key = `named:${this.proxy.icon_theme_path}:${wanted}`;
+            if (this._icon_key === key) return;
+            this._icon_key = key;
             const theme_file = find_theme_file(this.proxy.icon_theme_path, wanted);
-            this._icon.gicon = theme_file
-                ? new Gio.FileIcon({ file: theme_file })
-                : new Gio.ThemedIcon({ name: wanted });
+            this._icon.gicon = theme_file ? new Gio.FileIcon({ file: theme_file }) : new Gio.ThemedIcon({ name: wanted });
             return;
         }
 
@@ -113,17 +114,23 @@ class ShoalPanelIcon extends PanelMenu.Button {
         const best = select_best_pixmap(pixmaps, size);
         if (best) {
             try {
+                const px_key = `px:${is_attn ? 1 : 0}:${best.width}x${best.height}:${best.bytes[0] ?? 0}:${best.bytes[best.bytes.length >> 1] ?? 0}`;
+                if (this._icon_key === px_key) return;
                 const rgba = argb32_to_rgba(best.bytes, best.width * best.height);
                 const content = St.ImageContent.new_with_preferred_size(best.width, best.height);
-                const cogl_ctx = global.stage.context.get_backend().get_cogl_context();
-                content.set_bytes(
-                    cogl_ctx, GLib.Bytes.new(rgba), Cogl.PixelFormat.RGBA_8888,
-                    best.width, best.height, best.width * 4,
-                );
+                const gbytes = GLib.Bytes.new(rgba), fmt = Cogl.PixelFormat.RGBA_8888_PRE ?? Cogl.PixelFormat.RGBA_8888;
+                if (content.set_bytes.length >= 6) {
+                    const cogl_ctx = global.stage.context.get_backend().get_cogl_context();
+                    content.set_bytes(cogl_ctx, gbytes, fmt, best.width, best.height, best.width * 4);
+                } else {
+                    content.set_bytes(gbytes, fmt, best.width, best.height, best.width * 4);
+                }
+                this._icon_key = px_key;
                 this._icon.gicon = content;
                 return;
             } catch (_e) { /* fall back to symbolic icon */ }
         }
+        this._icon_key = 'fallback';
         this._icon.icon_name = 'application-x-executable-symbolic';
     }
 
@@ -140,9 +147,7 @@ class ShoalPanelIcon extends PanelMenu.Button {
             if (!this._desat_fx) {
                 this._desat_fx = new Clutter.DesaturateEffect({ factor: fx.desaturate });
                 this._icon.add_effect_with_name('shoal-desaturate', this._desat_fx);
-            } else {
-                this._desat_fx.set_factor(fx.desaturate);
-            }
+            } else this._desat_fx.set_factor(fx.desaturate);
         } else if (this._desat_fx) {
             this._icon.remove_effect_by_name('shoal-desaturate');
             this._desat_fx = null;
@@ -162,28 +167,26 @@ class ShoalPanelIcon extends PanelMenu.Button {
     }
 
     _sync_dbus_menu() {
-        const path = this.proxy.menu_path;
+        const path = this.proxy.menu_path, show_prefs = this.settings.show_settings_in_menu();
+        const prefs_changed = this._last_show_prefs !== show_prefs;
+        this._last_show_prefs = show_prefs;
         if (path && path !== '/') {
             if (!this.dbus_menu || this.dbus_menu.menu_path !== path) {
                 if (this.dbus_menu) this.dbus_menu.destroy();
-                this.dbus_menu = new DBusMenuClient(
-                    this.proxy.bus_name, path, this.menu, this.extension, this.settings,
-                );
-            } else {
-                this.dbus_menu.rebuild_popup_menu();
-            }
+                this.dbus_menu = new DBusMenuClient(this.proxy.bus_name, path, this.menu, this.extension, this.settings);
+            } else if (prefs_changed) this.dbus_menu.rebuild_popup_menu();
             return;
         }
+        const had_dbus_menu = Boolean(this.dbus_menu);
         if (this.dbus_menu) {
             this.dbus_menu.destroy();
             this.dbus_menu = null;
         }
+        if (!had_dbus_menu && !prefs_changed) return;
         this.menu.removeAll();
-        if (this.settings.show_settings_in_menu()) {
+        if (show_prefs) {
             const prefs_item = new PopupMenu.PopupMenuItem('Shoal Settings & About…');
-            prefs_item.connect('activate', () => {
-                try { this.extension?.openPreferences(); } catch (_e) { /* ignore */ }
-            });
+            prefs_item.connect('activate', () => { try { this.extension?.openPreferences(); } catch (_e) { /* ignore */ } });
             this.menu.addMenuItem(prefs_item);
         }
     }
@@ -232,6 +235,10 @@ class ShoalPanelIcon extends PanelMenu.Button {
     }
 
     destroy() {
+        if (this._evt_id) try { this.disconnect(this._evt_id); } catch (_e) { /* ignore */ }
+        if (this._menu_id && this.menu) try { this.menu.disconnect(this._menu_id); } catch (_e) { /* ignore */ }
+        this._evt_id = 0;
+        this._menu_id = 0;
         if (this.dbus_menu) {
             this.dbus_menu.destroy();
             this.dbus_menu = null;

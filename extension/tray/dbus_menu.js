@@ -15,7 +15,7 @@ function unpack_prop(props, key, def = null) {
 
 export function strip_mnemonic_underscores(label) {
     if (typeof label !== 'string' || !label) return '';
-    return label.replace(/__|\b_([A-Za-z0-9])|_([A-Za-z0-9])/g, (_m, g1, g2) => g1 || g2 || '_');
+    return label.replace(/__|(^|[\s(])_([A-Za-z0-9])/g, (_m, p1, p2) => (p2 ? `${p1}${p2}` : '_'));
 }
 
 export class DBusMenuClient {
@@ -86,7 +86,7 @@ export class DBusMenuClient {
                     this._last_layout = root_layout;
                     this.rebuild_popup_menu();
                 } catch (_e) {
-                    this.rebuild_popup_menu();
+                    if (!this._last_layout) this.rebuild_popup_menu();
                 }
             },
         );

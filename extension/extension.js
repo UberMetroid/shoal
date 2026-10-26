@@ -17,7 +17,6 @@ export default class ShoalExtension extends Extension {
 
     disable() {
         if (this.watcher !== null) {
-            this.unload_theme();
             this.watcher.destroy();
             this.watcher = null;
         }

@@ -186,7 +186,7 @@ async function verify_behavioral_and_gtk_suite() {
     const p1 = parse_sni_service('/org/ayatana/NotificationItem/steam', ':1.42'), p2 = parse_sni_service('org.kde.StatusNotifierItem-99-1', ':1.99');
     assert(p1.bus_name === ':1.42' && p1.obj_path === '/org/ayatana/NotificationItem/steam' && p2.obj_path === '/StatusNotifierItem', 'sni parse');
     const rgba = argb32_to_rgba(new Uint8Array([128, 255, 10, 20]), 1);
-    assert(rgba[0] === 255 && rgba[1] === 10 && rgba[2] === 20 && rgba[3] === 128, 'ARGB32 -> RGBA conversion');
+    assert(rgba[0] === 128 && rgba[1] === 5 && rgba[2] === 10 && rgba[3] === 128, 'ARGB32 -> premultiplied RGBA conversion');
     const best_px = select_best_pixmap([[16, 16, new Uint8Array(16 * 16 * 4)], [24, 24, new Uint8Array(24 * 24 * 4)]], 22);
     assert(best_px && best_px.width === 24, 'select_best_pixmap');
     const dm_dict = new GLib.Variant('a{sv}', { label: new GLib.Variant('s', 'Settings'), enabled: new GLib.Variant('b', true) });

@@ -30,13 +30,15 @@ export class LegacyTray {
         if (this.tray_manager !== null) return;
         if (typeof Shell.TrayManager !== 'function') return;
         try {
-            this.tray_manager = new Shell.TrayManager();
+            const mgr = new Shell.TrayManager();
             this._signals.push(
-                this.tray_manager.connect('tray-icon-added', (_mgr, icon) => this._on_icon_added(icon)),
-                this.tray_manager.connect('tray-icon-removed', (_mgr, icon) => this._on_icon_removed(icon)),
+                mgr.connect('tray-icon-added', (_mgr, icon) => this._on_icon_added(icon)),
+                mgr.connect('tray-icon-removed', (_mgr, icon) => this._on_icon_removed(icon)),
             );
-            this.tray_manager.manage_screen(Main.panel);
+            mgr.manage_screen(Main.panel);
+            this.tray_manager = mgr;
         } catch (_e) {
+            this._signals.length = 0;
             this.tray_manager = null;
         }
     }
@@ -74,6 +76,7 @@ export class LegacyTray {
         const order = this.settings.tray_order();
         try {
             Main.panel.addToStatusArea(role, btn, order, pos);
+            tray_icon.connect?.('destroy', () => this._on_icon_removed(tray_icon));
             this._buttons.set(tray_icon, btn);
         } catch (_e) {
             btn.destroy();

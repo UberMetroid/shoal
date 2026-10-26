@@ -112,10 +112,15 @@ export class TrayWatcher {
             this._items.get(key).proxy.refresh_properties();
             return;
         }
-        const proxy = new ItemProxy(bus_name, obj_path, () => {
-            const entry = this._items.get(key);
-            if (entry?.icon) entry.icon.sync_from_proxy();
-        });
+        const proxy = new ItemProxy(
+            bus_name,
+            obj_path,
+            () => {
+                const entry = this._items.get(key);
+                if (entry?.icon) entry.icon.sync_from_proxy();
+            },
+            () => this._unregister_item(key),
+        );
         const icon = new ShoalPanelIcon(proxy, this.settings, this.extension);
         const role = `shoal-sni-${key}`;
         const pos = resolve_panel_box_name(this.settings.tray_pos());
