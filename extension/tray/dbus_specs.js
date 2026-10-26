@@ -77,6 +77,19 @@ export const DBUSMENU_XML = `
   </interface>
 </node>`;
 
+export function unpack_variant(val, def = null) {
+    let cur = val;
+    if (cur === undefined || cur === null) return def;
+    try {
+        while (typeof cur === 'object' && cur !== null && typeof cur.deep_unpack === 'function') {
+            cur = cur.deep_unpack();
+        }
+        return cur ?? def;
+    } catch (_e) {
+        return def;
+    }
+}
+
 export function parse_sni_service(service_or_path, sender = '') {
     const raw = typeof service_or_path === 'string' ? service_or_path.trim() : '';
     const snd = typeof sender === 'string' ? sender.trim() : '';

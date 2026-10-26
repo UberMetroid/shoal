@@ -5,7 +5,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import {
     DBUSMENU_XML, ITEM_XML, WATCHER_XML,
-    argb32_to_rgba, parse_sni_service, select_best_pixmap,
+    argb32_to_rgba, parse_sni_service, select_best_pixmap, unpack_variant,
 } from '../extension/tray/dbus_specs.js';
 import {
     DEFAULT_PANEL_ICON_SIZE, build_icon_inline_style, build_indicator_style_classes,
@@ -193,16 +193,15 @@ async function verify_behavioral_and_gtk_suite() {
     s.reset_defaults();
     assert(s.tray_pos() === 'right' && s.icon_size() === 0 && s.custom_icons().length === 0, 'reset defaults');
 
-    assert(WATCHER_XML.includes('StatusNotifierWatcher') && ITEM_XML.includes('StatusNotifierItem'), 'dbus xml');
-    assert(DBUSMENU_XML.includes('com.canonical.dbusmenu'), 'dbusmenu xml');
-    const p1 = parse_sni_service('/org/ayatana/NotificationItem/steam', ':1.42');
-    const p2 = parse_sni_service('org.kde.StatusNotifierItem-99-1', ':1.99');
-    assert(p1.bus_name === ':1.42' && p1.obj_path === '/org/ayatana/NotificationItem/steam', 'ayatana path');
-    assert(p2.bus_name === 'org.kde.StatusNotifierItem-99-1' && p2.obj_path === '/StatusNotifierItem', 'kde service');
+    assert(WATCHER_XML.includes('StatusNotifierWatcher') && ITEM_XML.includes('StatusNotifierItem') && DBUSMENU_XML.includes('com.canonical.dbusmenu'), 'dbus xml');
+    const p1 = parse_sni_service('/org/ayatana/NotificationItem/steam', ':1.42'), p2 = parse_sni_service('org.kde.StatusNotifierItem-99-1', ':1.99');
+    assert(p1.bus_name === ':1.42' && p1.obj_path === '/org/ayatana/NotificationItem/steam' && p2.obj_path === '/StatusNotifierItem', 'sni parse');
     const rgba = argb32_to_rgba(new Uint8Array([128, 255, 10, 20]), 1);
     assert(rgba[0] === 255 && rgba[1] === 10 && rgba[2] === 20 && rgba[3] === 128, 'ARGB32 -> RGBA conversion');
     const best_px = select_best_pixmap([[16, 16, new Uint8Array(16 * 16 * 4)], [24, 24, new Uint8Array(24 * 24 * 4)]], 22);
     assert(best_px && best_px.width === 24, 'select_best_pixmap');
+    const dm_dict = new GLib.Variant('a{sv}', { label: new GLib.Variant('s', 'Settings'), enabled: new GLib.Variant('b', true) });
+    assert(unpack_variant(dm_dict.unpack().label, '') === 'Settings' && unpack_variant(dm_dict.unpack().enabled, false) === true, 'unpack_variant a{sv}');
 
     try {
         const Gtk = (await import('gi://Gtk?version=4.0')).default;

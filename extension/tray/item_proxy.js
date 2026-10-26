@@ -3,6 +3,7 @@
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import { unpack_variant } from './dbus_specs.js';
 
 const SNI_IFACES = Object.freeze([
     'org.kde.StatusNotifierItem',
@@ -21,35 +22,18 @@ const SIGNAL_NAMES = Object.freeze([
 ]);
 
 function unpack_str(dict, key, fallback = '') {
-    const v = dict[key];
-    if (!v) return fallback;
-    try {
-        const s = v.deep_unpack?.() ?? v;
-        return typeof s === 'string' ? s : fallback;
-    } catch (_e) {
-        return fallback;
-    }
+    const s = unpack_variant(dict[key]);
+    return typeof s === 'string' ? s : fallback;
 }
 
 function unpack_bool(dict, key, fallback = false) {
-    const v = dict[key];
-    if (!v) return fallback;
-    try {
-        return Boolean(v.deep_unpack?.() ?? v);
-    } catch (_e) {
-        return fallback;
-    }
+    const b = unpack_variant(dict[key]);
+    return b === null ? fallback : Boolean(b);
 }
 
 function unpack_pixmaps(dict, key) {
-    const v = dict[key];
-    if (!v) return [];
-    try {
-        const arr = v.deep_unpack?.() ?? v;
-        return Array.isArray(arr) ? arr : [];
-    } catch (_e) {
-        return [];
-    }
+    const arr = unpack_variant(dict[key]);
+    return Array.isArray(arr) ? arr : [];
 }
 
 export class ItemProxy {
@@ -155,30 +139,37 @@ export class ItemProxy {
         this.item_is_menu = unpack_bool(props, 'ItemIsMenu', false);
         this.icon_pixmap = unpack_pixmaps(props, 'IconPixmap');
         this.attention_icon_pixmap = unpack_pixmaps(props, 'AttentionIconPixmap');
-        const tt = props.ToolTip?.deep_unpack?.();
+        const tt = unpack_variant(props.ToolTip);
         if (Array.isArray(tt) && tt.length >= 3 && typeof tt[2] === 'string') {
             this.tooltip_title = tt[2];
         }
         if (typeof this.on_update === 'function') this.on_update(this);
     }
 
-    call_action(method, params_variant) {
+    call_action(method, params_variant, on_error = null) {
         if (!this.cancellable || this.cancellable.is_cancelled()) return;
         Gio.DBus.session.call(
             this.bus_name, this.obj_path, this.iface_name, method,
             params_variant, null, Gio.DBusCallFlags.NONE, 1500, this.cancellable,
             (conn, res) => {
-                try { conn.call_finish(res); } catch (_e) { /* optional SNI method */ }
+                try {
+                    conn.call_finish(res);
+                } catch (_e) {
+                    if (typeof on_error === 'function') on_error();
+                }
             },
         );
     }
 
-    activate(x = 0, y = 0) {
-        this.call_action('Activate', new GLib.Variant('(ii)', [Math.round(x), Math.round(y)]));
+    activate(x = 0, y = 0, on_fallback = null) {
+        this.call_action('Activate', new GLib.Variant('(ii)', [Math.round(x), Math.round(y)]), on_fallback);
     }
 
     secondary_activate(x = 0, y = 0) {
-        this.call_action('SecondaryActivate', new GLib.Variant('(ii)', [Math.round(x), Math.round(y)]));
+        const ts = Math.floor(GLib.get_monotonic_time() / 1000) >>> 0;
+        this.call_action('SecondaryActivate', new GLib.Variant('(ii)', [Math.round(x), Math.round(y)]), () => {
+            this.call_action('XAyatanaSecondaryActivate', new GLib.Variant('(u)', [ts]));
+        });
     }
 
     context_menu(x = 0, y = 0) {

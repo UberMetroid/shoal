@@ -5,17 +5,12 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { unpack_variant } from './dbus_specs.js';
 
 const MAX_MENU_ITEMS = 96;
 
 function unpack_prop(props, key, def = null) {
-    const v = props[key];
-    if (!v) return def;
-    try {
-        return v.deep_unpack?.() ?? v;
-    } catch (_e) {
-        return def;
-    }
+    return unpack_variant(props[key], def);
 }
 
 export function strip_mnemonic_underscores(label) {

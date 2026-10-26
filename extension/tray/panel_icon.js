@@ -212,7 +212,10 @@ class ShoalPanelIcon extends PanelMenu.Button {
                 this.menu.toggle();
             } else {
                 this.menu.close();
-                this.proxy.activate(x, y);
+                this.proxy.activate(x, y, () => {
+                    if (this.dbus_menu) this.menu.open();
+                    else this.proxy?.context_menu(x, y);
+                });
             }
             return Clutter.EVENT_STOP;
         }
