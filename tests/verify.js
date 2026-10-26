@@ -133,7 +133,7 @@ function verify_process_boundaries_and_invariants() {
         'Derived from Ubuntu AppIndicator Support', 'org.kde.StatusNotifierWatcher',
         'org.freedesktop.StatusNotifierWatcher', '[shoal] sni-refresh', '[shoal] dbusmenu-reload',
         '"45"', '"50"', '"settings-schema": "org.gnome.shell.extensions.shoal"',
-        'name="tray-pos"', 'v1.0.0',
+        'name="tray-pos"', 'v1.0.1',
         'this.unload_theme()', 'load_stylesheet(file)', 'Support &amp; Community',
     ];
     for (const req of reqs) assert(combined.includes(req), `Missing invariant: ${req}`);

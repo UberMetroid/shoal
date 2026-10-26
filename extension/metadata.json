@@ -5,7 +5,7 @@
     "url": "https://github.com/UberMetroid/shoal",
     "settings-schema": "org.gnome.shell.extensions.shoal",
     "gettext-domain": "shoal@ubermetroid.github.io",
-    "version-name": "1.0.0",
+    "version-name": "1.0.1",
     "shell-version": [
         "45",
         "46",

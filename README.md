@@ -32,7 +32,7 @@ Derived from [Ubuntu AppIndicator and KStatusNotifierItem Support](https://githu
 
 ## Quick Install
 
-Download `shoal@ubermetroid.github.io.shell-extension.zip` from [**GitHub Releases (`v1.0.0`)**](https://github.com/UberMetroid/shoal/releases/latest):
+Download `shoal@ubermetroid.github.io.shell-extension.zip` from [**GitHub Releases (`v1.0.1`)**](https://github.com/UberMetroid/shoal/releases/latest):
 
 ```bash
 gnome-extensions install --force shoal@ubermetroid.github.io.shell-extension.zip
@@ -53,7 +53,7 @@ gnome-extensions prefs shoal@ubermetroid.github.io
 | :--- | :--- |
 | **1. Tray & Panel** | Top Bar Position (`Right Box — Near Quick Settings`, `Center Box — Near Clock`, `Left Box — Near Activities`), Top Bar Order Index (`0–10`), Compact Indicator Spacing toggle, Legacy XWayland System Tray (`Shell.TrayManager`) toggle, Middle-Click Action (`Secondary Activate`, `Open Context Menu`, `Disabled`), Scroll Wheel Forwarding toggle, Show `"Shoal Settings & About…"` in Tray Menus toggle, and **Reset to Shoal Defaults**. |
 | **2. Icons & Effects** | Icon Size Override (`0 = Auto`, `16–48 px`), Icon Opacity (`64–255`), Desaturation Toward Monochrome (`0–100%`), Icon Brightness Shift (`-100%` to `+100%`), and Icon Contrast Shift (`-100%` to `+100%`). |
-| **3. About & Support** | Release version (`v1.0.0`), `GPL-3.0-or-later` license & Ubuntu AppIndicator attribution, **Star Shoal on GitHub**, **Tuition, Not Coffee — Help send my daughter to college**, **Project Website**, and **Report an Issue**. |
+| **3. About & Support** | Release version (`v1.0.1`), `GPL-3.0-or-later` license & Ubuntu AppIndicator attribution, **Star Shoal on GitHub**, **Tuition, Not Coffee — Help send my daughter to college**, **Project Website**, and **Report an Issue**. |
 
 ---
 
