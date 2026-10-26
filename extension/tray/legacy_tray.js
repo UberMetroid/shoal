@@ -16,6 +16,7 @@ export class LegacyTray {
         this.tray_manager = null;
         this._signals = [];
         this._buttons = new Map();
+        this._seq = 0;
     }
 
     sync_enabled() {
@@ -71,14 +72,16 @@ export class LegacyTray {
             btn.menu.addMenuItem(prefs_item);
         }
 
-        const role = `shoal-legacy-${Date.now()}-${this._buttons.size}`;
+        this._seq += 1;
+        const role = `shoal-legacy-${this._seq}`;
         const pos = resolve_panel_box_name(this.settings.tray_pos());
-        const order = this.settings.tray_order();
+        const order = this.settings.tray_order() + this._buttons.size;
         try {
             Main.panel.addToStatusArea(role, btn, order, pos);
             tray_icon.connect?.('destroy', () => this._on_icon_removed(tray_icon));
             this._buttons.set(tray_icon, btn);
         } catch (_e) {
+            if (Main.panel?.statusArea) delete Main.panel.statusArea[role];
             btn.destroy();
         }
     }
@@ -104,11 +107,25 @@ export class LegacyTray {
         }
     }
 
-    disable() {
+    relayout_icons(start_order = null) {
+        const pos = resolve_panel_box_name(this.settings.tray_pos());
+        const target = Main.panel[`_${pos}Box`];
+        if (!target) return;
+        let idx = start_order ?? this.settings.tray_order();
         for (const btn of this._buttons.values()) {
-            try { btn.destroy(); } catch (_e) { /* ignore */ }
+            const container = btn.container ?? btn;
+            const parent = container.get_parent?.();
+            if (parent === target) {
+                target.set_child_at_index(container, Math.min(idx, Math.max(0, target.get_n_children() - 1)));
+            } else if (parent) {
+                parent.remove_child(container);
+                target.insert_child_at_index(container, Math.min(idx, target.get_n_children()));
+            }
+            idx += 1;
         }
-        this._buttons.clear();
+    }
+
+    disable() {
         if (this.tray_manager !== null) {
             for (const id of this._signals) {
                 try { this.tray_manager.disconnect(id); } catch (_e) { /* ignore */ }
@@ -116,6 +133,11 @@ export class LegacyTray {
             this._signals.length = 0;
             try { this.tray_manager.unmanage_screen(); } catch (_e) { /* ignore */ }
             this.tray_manager = null;
+        }
+        const btns = Array.from(this._buttons.values());
+        this._buttons.clear();
+        for (const btn of btns) {
+            try { btn.destroy(); } catch (_e) { /* ignore */ }
         }
     }
 

@@ -18,6 +18,8 @@ const SIGNAL_NAMES = Object.freeze([
     'NewTitle',
     'NewToolTip',
     'NewStatus',
+    'NewMenu',
+    'NewIconThemePath',
     'XAyatanaNewLabel',
 ]);
 
@@ -44,6 +46,8 @@ export class ItemProxy {
         this.on_update = on_update;
         this.on_invalid = on_invalid;
         this.iface_name = 'org.kde.StatusNotifierItem';
+        this._iface_idx = 0;
+        this._ayatana_label_supported = null;
         this.cancellable = new Gio.Cancellable();
         this._sub_ids = [];
         this._refresh_timer = 0;
@@ -94,29 +98,31 @@ export class ItemProxy {
         GLib.Source.set_name_by_id(this._refresh_timer, '[shoal] sni-refresh');
     }
 
-    refresh_properties(iface_idx = 0) {
+    refresh_properties(iface_idx = this._iface_idx) {
         if (!this.cancellable || this.cancellable.is_cancelled()) return;
         const candidate = SNI_IFACES[iface_idx] || SNI_IFACES[0];
         Gio.DBus.session.call(
-            this.bus_name,
-            this.obj_path,
-            'org.freedesktop.DBus.Properties',
-            'GetAll',
-            new GLib.Variant('(s)', [candidate]),
-            new GLib.VariantType('(a{sv})'),
-            Gio.DBusCallFlags.NONE,
-            2500,
-            this.cancellable,
+            this.bus_name, this.obj_path, 'org.freedesktop.DBus.Properties', 'GetAll',
+            new GLib.Variant('(s)', [candidate]), new GLib.VariantType('(a{sv})'),
+            Gio.DBusCallFlags.NONE, 2500, this.cancellable,
             (conn, res) => {
                 try {
-                    const reply = conn.call_finish(res);
-                    const [dict] = reply.unpack();
+                    const [dict] = conn.call_finish(res).unpack();
                     const props = dict.deep_unpack();
+                    if (!this._has_loaded && Object.keys(props).length === 0 && iface_idx + 1 < SNI_IFACES.length) {
+                        this.refresh_properties(iface_idx + 1);
+                        return;
+                    }
                     this.iface_name = candidate;
+                    this._iface_idx = iface_idx;
                     this._has_loaded = true;
                     this._apply_props(props);
+                    if (candidate === 'org.kde.StatusNotifierItem' && !('XAyatanaLabel' in props) &&
+                        this._ayatana_label_supported !== false) {
+                        this._fetch_ayatana_label();
+                    }
                 } catch (_e) {
-                    if (iface_idx + 1 < SNI_IFACES.length) {
+                    if (!this._has_loaded && iface_idx + 1 < SNI_IFACES.length) {
                         this.refresh_properties(iface_idx + 1);
                     } else if (!this._has_loaded && typeof this.on_invalid === 'function') {
                         this.on_invalid();
@@ -126,16 +132,38 @@ export class ItemProxy {
         );
     }
 
+    _fetch_ayatana_label() {
+        if (!this.cancellable || this.cancellable.is_cancelled()) return;
+        Gio.DBus.session.call(
+            this.bus_name, this.obj_path, 'org.freedesktop.DBus.Properties', 'Get',
+            new GLib.Variant('(ss)', ['org.ayatana.StatusNotifierItem', 'XAyatanaLabel']),
+            new GLib.VariantType('(v)'), Gio.DBusCallFlags.NONE, 1500, this.cancellable,
+            (conn, res) => {
+                try {
+                    const [val] = conn.call_finish(res).unpack();
+                    const lbl = unpack_variant(val, '');
+                    this._ayatana_label_supported = true;
+                    if (typeof lbl === 'string' && lbl !== this.label) {
+                        this.label = lbl;
+                        if (typeof this.on_update === 'function') this.on_update(this);
+                    }
+                } catch (_e) {
+                    this._ayatana_label_supported = false;
+                }
+            },
+        );
+    }
+
     _apply_props(props) {
-        this.id = unpack_str(props, 'Id', this.id || this.bus_name);
-        this.title = unpack_str(props, 'Title', this.title || this.id);
-        this.status = unpack_str(props, 'Status', 'Active');
-        this.category = unpack_str(props, 'Category', 'ApplicationStatus');
+        this.id = unpack_str(props, 'Id', '') || this.id || this.bus_name;
+        this.title = unpack_str(props, 'Title', '') || this.title || this.id;
+        this.status = unpack_str(props, 'Status', '') || 'Active';
+        this.category = unpack_str(props, 'Category', '') || 'ApplicationStatus';
         this.icon_name = unpack_str(props, 'IconName', '');
         this.attention_icon_name = unpack_str(props, 'AttentionIconName', '');
         this.overlay_icon_name = unpack_str(props, 'OverlayIconName', '');
         this.icon_theme_path = unpack_str(props, 'IconThemePath', '');
-        this.label = unpack_str(props, 'XAyatanaLabel', '');
+        if ('XAyatanaLabel' in props) this.label = unpack_str(props, 'XAyatanaLabel', '');
         this.menu_path = unpack_str(props, 'Menu', '');
         this.item_is_menu = unpack_bool(props, 'ItemIsMenu', false);
         this.icon_pixmap = unpack_pixmaps(props, 'IconPixmap');

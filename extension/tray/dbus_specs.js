@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Embedded D-Bus XML introspection specs, SNI service address parser, and ARGB32-to-RGBA helpers.
+// Embedded D-Bus XML introspection spec, SNI service address parser, and ARGB32-to-RGBA helpers.
 
 export const WATCHER_XML = `
 <node>
@@ -21,59 +21,6 @@ export const WATCHER_XML = `
     </signal>
     <signal name="StatusNotifierHostRegistered"/>
     <signal name="StatusNotifierHostUnregistered"/>
-  </interface>
-</node>`;
-
-export const ITEM_XML = `
-<node>
-  <interface name="org.kde.StatusNotifierItem">
-    <method name="ContextMenu">
-      <arg type="i" direction="in" name="x"/>
-      <arg type="i" direction="in" name="y"/>
-    </method>
-    <method name="Activate">
-      <arg type="i" direction="in" name="x"/>
-      <arg type="i" direction="in" name="y"/>
-    </method>
-    <method name="SecondaryActivate">
-      <arg type="i" direction="in" name="x"/>
-      <arg type="i" direction="in" name="y"/>
-    </method>
-    <method name="Scroll">
-      <arg type="i" direction="in" name="delta"/>
-      <arg type="s" direction="in" name="orientation"/>
-    </method>
-  </interface>
-</node>`;
-
-export const DBUSMENU_XML = `
-<node>
-  <interface name="com.canonical.dbusmenu">
-    <method name="GetLayout">
-      <arg type="i" direction="in" name="parentId"/>
-      <arg type="i" direction="in" name="recursionDepth"/>
-      <arg type="as" direction="in" name="propertyNames"/>
-      <arg type="u" direction="out" name="revision"/>
-      <arg type="(ia{sv}av)" direction="out" name="layout"/>
-    </method>
-    <method name="Event">
-      <arg type="i" direction="in" name="id"/>
-      <arg type="s" direction="in" name="eventId"/>
-      <arg type="v" direction="in" name="data"/>
-      <arg type="u" direction="in" name="timestamp"/>
-    </method>
-    <method name="AboutToShow">
-      <arg type="i" direction="in" name="id"/>
-      <arg type="b" direction="out" name="needUpdate"/>
-    </method>
-    <signal name="ItemsPropertiesUpdated">
-      <arg type="a(ia{sv})" name="updatedProps"/>
-      <arg type="a(ias)" name="removedProps"/>
-    </signal>
-    <signal name="LayoutUpdated">
-      <arg type="u" name="revision"/>
-      <arg type="i" name="parent"/>
-    </signal>
   </interface>
 </node>`;
 
@@ -145,13 +92,17 @@ export function argb32_to_rgba(src_bytes, pixel_count) {
     const len = Math.min(total, src_bytes.length ?? src_bytes.byteLength ?? 0);
     for (let i = 0; i + 3 < len; i += 4) {
         const a = src_bytes[i];
-        const r = src_bytes[i + 1];
-        const g = src_bytes[i + 2];
-        const b = src_bytes[i + 3];
-        out[i] = Math.round((r * a) / 255);
-        out[i + 1] = Math.round((g * a) / 255);
-        out[i + 2] = Math.round((b * a) / 255);
-        out[i + 3] = a;
+        if (a === 255) {
+            out[i] = src_bytes[i + 1];
+            out[i + 1] = src_bytes[i + 2];
+            out[i + 2] = src_bytes[i + 3];
+            out[i + 3] = 255;
+        } else if (a !== 0) {
+            out[i] = ((src_bytes[i + 1] * a + 127) / 255) | 0;
+            out[i + 1] = ((src_bytes[i + 2] * a + 127) / 255) | 0;
+            out[i + 2] = ((src_bytes[i + 3] * a + 127) / 255) | 0;
+            out[i + 3] = a;
+        }
     }
     return out;
 }

@@ -152,9 +152,12 @@ export class DBusMenuClient {
         const children_Display = unpack_prop(props, 'children-display', '');
         const sub_nodes = children_v.unpack();
 
-        if ((children_Display === 'submenu' || sub_nodes.length > 0) && depth < 2) {
+        if ((children_Display === 'submenu' || sub_nodes.length > 0) && depth < 3) {
             const sub_item = new PopupMenu.PopupSubMenuMenuItem(label || 'Submenu');
             sub_item.setSensitive(enabled);
+            sub_item.menu.connect('open-state-changed', (_m, is_open) => {
+                if (is_open) this.about_to_show(item_id);
+            });
             let next_count = count + 1;
             for (const sub_v of sub_nodes) {
                 if (next_count >= MAX_MENU_ITEMS) break;
@@ -164,7 +167,7 @@ export class DBusMenuClient {
             return next_count;
         }
 
-        if (!label) return count;
+        if (!label && !icon_name) return count;
         const menu_item = new PopupMenu.PopupMenuItem(label);
         menu_item.setSensitive(enabled);
         if (toggle_type === 'checkmark') {

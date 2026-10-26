@@ -10,7 +10,7 @@ import { ExtensionSettings } from '../ui/settings/gsettings.js';
 import { WATCHER_XML, parse_sni_service } from './dbus_specs.js';
 import { ItemProxy } from './item_proxy.js';
 import { LegacyTray } from './legacy_tray.js';
-import { ShoalPanelIcon } from './panel_icon.js';
+import { ShoalPanelIcon, clear_icon_path_cache } from './panel_icon.js';
 
 const WATCHER_PATH = '/StatusNotifierWatcher';
 const WATCHER_NAMES = Object.freeze([
@@ -27,6 +27,7 @@ export class TrayWatcher {
         this.cancellable = new Gio.Cancellable();
         this._signals = [];
         this._owned_names = [];
+        this._active_names = new Set();
         this._items = new Map();
         this._current_style = null;
         this.dbus_impl = null;
@@ -74,9 +75,15 @@ export class TrayWatcher {
                 Gio.DBus.session, bus_name,
                 Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT | Gio.BusNameOwnerFlags.REPLACE,
                 () => {
+                    this._active_names.add(bus_name);
                     try { this.dbus_impl?.emit_signal('StatusNotifierHostRegistered', null); } catch (_e) { /* ignore */ }
                 },
-                null,
+                () => {
+                    this._active_names.delete(bus_name);
+                    if (this._active_names.size === 0) {
+                        try { this.dbus_impl?.emit_signal('StatusNotifierHostUnregistered', null); } catch (_e) { /* ignore */ }
+                    }
+                },
             );
             this._owned_names.push(id);
         }
@@ -103,31 +110,27 @@ export class TrayWatcher {
     }
 
     get RegisteredStatusNotifierItems() { return Array.from(this._items.keys()); }
-    get IsStatusNotifierHostRegistered() { return true; }
+    get IsStatusNotifierHostRegistered() { return this._active_names.size > 0; }
     get ProtocolVersion() { return 0; }
 
     _register_item(bus_name, obj_path) {
         const key = `${bus_name}${obj_path}`;
         if (this._items.has(key)) {
-            this._items.get(key).proxy.refresh_properties();
+            this._items.get(key).proxy._schedule_refresh();
             return;
         }
         const proxy = new ItemProxy(
-            bus_name,
-            obj_path,
-            () => {
-                const entry = this._items.get(key);
-                if (entry?.icon) entry.icon.sync_from_proxy();
-            },
+            bus_name, obj_path,
+            () => this._items.get(key)?.icon?.sync_from_proxy(),
             () => this._unregister_item(key),
         );
         const icon = new ShoalPanelIcon(proxy, this.settings, this.extension);
         const role = `shoal-sni-${key}`;
         const pos = resolve_panel_box_name(this.settings.tray_pos());
-        const order = this.settings.tray_order();
         try {
-            Main.panel.addToStatusArea(role, icon, order, pos);
+            Main.panel.addToStatusArea(role, icon, this.settings.tray_order() + this._items.size, pos);
         } catch (_e) {
+            if (Main.panel?.statusArea) delete Main.panel.statusArea[role];
             icon.destroy();
             proxy.destroy();
             return;
@@ -146,9 +149,7 @@ export class TrayWatcher {
         const entry = this._items.get(key);
         if (!entry) return;
         this._items.delete(key);
-        if (entry.watch_id) {
-            try { Gio.bus_unwatch_name(entry.watch_id); } catch (_e) { /* ignore */ }
-        }
+        if (entry.watch_id) try { Gio.bus_unwatch_name(entry.watch_id); } catch (_e) { /* ignore */ }
         try { entry.icon.destroy(); } catch (_e) { /* ignore */ }
         try { entry.proxy.destroy(); } catch (_e) { /* ignore */ }
         try {
@@ -164,14 +165,14 @@ export class TrayWatcher {
             Gio.DBusCallFlags.NONE, 2500, this.cancellable,
             (conn, res) => {
                 try {
-                    const reply = conn.call_finish(res);
-                    const [names] = reply.deep_unpack();
-                    let checked = 0;
-                    for (const name of names) {
-                        if (checked >= MAX_SCAN_NAMES) break;
+                    const [names] = conn.call_finish(res).deep_unpack();
+                    const limit = Math.min(names.length, MAX_SCAN_NAMES * 4);
+                    let registered = 0;
+                    for (let i = 0; i < limit && registered < MAX_SCAN_NAMES; i += 1) {
+                        const name = names[i];
                         if (name.startsWith('org.kde.StatusNotifierItem-') ||
                             name.startsWith('org.ayatana.StatusNotifierItem-')) {
-                            checked += 1;
+                            registered += 1;
                             this._register_item(name, '/StatusNotifierItem');
                         }
                     }
@@ -183,10 +184,7 @@ export class TrayWatcher {
     _bind_settings() {
         for (const k of ['tray-pos', 'tray-order']) {
             if (this.ext_settings.settings_schema?.has_key(k)) {
-                this._signals.push([
-                    this.ext_settings,
-                    this.ext_settings.connect(`changed::${k}`, () => this._relayout_icons()),
-                ]);
+                this._signals.push([this.ext_settings, this.ext_settings.connect(`changed::${k}`, () => this._relayout_icons())]);
             }
         }
         const style_keys = [
@@ -195,10 +193,7 @@ export class TrayWatcher {
         ];
         for (const k of style_keys) {
             if (this.ext_settings.settings_schema?.has_key(k)) {
-                this._signals.push([
-                    this.ext_settings,
-                    this.ext_settings.connect(`changed::${k}`, () => this._refresh_all_icons()),
-                ]);
+                this._signals.push([this.ext_settings, this.ext_settings.connect(`changed::${k}`, () => this._refresh_all_icons())]);
             }
         }
         if (this.ext_settings.settings_schema?.has_key('legacy-tray-enabled')) {
@@ -210,16 +205,23 @@ export class TrayWatcher {
     }
 
     _relayout_icons() {
-        const snapshot = [];
-        for (const entry of this._items.values()) {
-            snapshot.push([entry.proxy.bus_name, entry.proxy.obj_path]);
+        const pos = resolve_panel_box_name(this.settings.tray_pos());
+        const target = Main.panel[`_${pos}Box`];
+        let idx = this.settings.tray_order();
+        if (target) {
+            for (const entry of this._items.values()) {
+                const container = entry.icon.container ?? entry.icon;
+                const parent = container.get_parent?.();
+                if (parent === target) {
+                    target.set_child_at_index(container, Math.min(idx, Math.max(0, target.get_n_children() - 1)));
+                } else if (parent) {
+                    parent.remove_child(container);
+                    target.insert_child_at_index(container, Math.min(idx, target.get_n_children()));
+                }
+                idx += 1;
+            }
         }
-        for (const key of Array.from(this._items.keys())) this._unregister_item(key);
-        for (const [bus_name, obj_path] of snapshot) this._register_item(bus_name, obj_path);
-        if (this.legacy_tray) {
-            this.legacy_tray.disable();
-            this.legacy_tray.sync_enabled();
-        }
+        this.legacy_tray?.relayout_icons(idx);
     }
 
     _refresh_all_icons() {
@@ -232,15 +234,12 @@ export class TrayWatcher {
             this.cancellable.cancel();
             this.cancellable = null;
         }
-        for (const [obj, sig] of this._signals) {
-            try { obj.disconnect(sig); } catch (_e) { /* ignore */ }
-        }
+        for (const [obj, sig] of this._signals) try { obj.disconnect(sig); } catch (_e) { /* ignore */ }
         this._signals.length = 0;
         for (const key of Array.from(this._items.keys())) this._unregister_item(key);
-        for (const id of this._owned_names) {
-            try { Gio.bus_unown_name(id); } catch (_e) { /* ignore */ }
-        }
+        for (const id of this._owned_names) try { Gio.bus_unown_name(id); } catch (_e) { /* ignore */ }
         this._owned_names.length = 0;
+        this._active_names.clear();
         if (this.dbus_impl) {
             try { this.dbus_impl.unexport(); } catch (_e) { /* ignore */ }
             this.dbus_impl = null;
@@ -249,6 +248,7 @@ export class TrayWatcher {
             this.legacy_tray.destroy();
             this.legacy_tray = null;
         }
+        clear_icon_path_cache();
         this.unload_theme();
         this.settings = null;
         this.ext_settings = null;

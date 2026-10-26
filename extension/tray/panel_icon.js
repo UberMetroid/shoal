@@ -17,28 +17,40 @@ import { DBusMenuClient } from './dbus_menu.js';
 import { argb32_to_rgba, select_best_pixmap } from './dbus_specs.js';
 
 const ICON_EXTS = Object.freeze(['', '.svg', '.png', '.xpm']);
+const ICON_SUBDIRS = Object.freeze([
+    '', 'hicolor/scalable/apps', 'hicolor/symbolic/apps',
+    'hicolor/48x48/apps', 'hicolor/32x32/apps', 'hicolor/24x24/apps', 'hicolor/16x16/apps',
+]);
+const MAX_PATH_CACHE = 128;
+const PATH_CACHE = new Map();
+
+export function clear_icon_path_cache() {
+    PATH_CACHE.clear();
+}
 
 function find_theme_file(theme_path, icon_name) {
     if (!icon_name) return null;
+    const cache_key = `${theme_path || ''}\0${icon_name}`;
+    if (PATH_CACHE.has(cache_key)) return PATH_CACHE.get(cache_key);
+    let found = null;
     if (icon_name.startsWith('/')) {
-        const direct = Gio.File.new_for_path(icon_name);
-        return direct.query_exists(null) ? direct : null;
-    }
-    if (!theme_path) return null;
-    const subdirs = [
-        '', 'hicolor/scalable/apps', 'hicolor/symbolic/apps',
-        'hicolor/48x48/apps', 'hicolor/32x32/apps', 'hicolor/24x24/apps', 'hicolor/16x16/apps',
-    ];
-    for (const sub of subdirs) {
-        for (const ext of ICON_EXTS) {
-            const full = sub
-                ? GLib.build_filenamev([theme_path, sub, `${icon_name}${ext}`])
-                : GLib.build_filenamev([theme_path, `${icon_name}${ext}`]);
-            const file = Gio.File.new_for_path(full);
-            if (file.query_exists(null)) return file;
+        if (GLib.file_test(icon_name, GLib.FileTest.IS_REGULAR)) found = Gio.File.new_for_path(icon_name);
+    } else if (theme_path) {
+        outer: for (const sub of ICON_SUBDIRS) {
+            for (const ext of ICON_EXTS) {
+                const full = sub ? GLib.build_filenamev([theme_path, sub, `${icon_name}${ext}`]) : GLib.build_filenamev([theme_path, `${icon_name}${ext}`]);
+                if (GLib.file_test(full, GLib.FileTest.IS_REGULAR)) {
+                    found = Gio.File.new_for_path(full);
+                    break outer;
+                }
+            }
         }
     }
-    return null;
+    if (found) {
+        if (PATH_CACHE.size >= MAX_PATH_CACHE) PATH_CACHE.clear();
+        PATH_CACHE.set(cache_key, found);
+    }
+    return found;
 }
 
 export const ShoalPanelIcon = GObject.registerClass(
@@ -97,14 +109,13 @@ class ShoalPanelIcon extends PanelMenu.Button {
 
     _update_icon_gicon(is_attn) {
         const size = compute_effective_icon_size(this.settings.icon_size());
-        const wanted = is_attn && this.proxy.attention_icon_name
-            ? this.proxy.attention_icon_name : this.proxy.icon_name;
+        const wanted = is_attn && this.proxy.attention_icon_name ? this.proxy.attention_icon_name : this.proxy.icon_name;
 
         if (wanted) {
-            const key = `named:${this.proxy.icon_theme_path}:${wanted}`;
+            const theme_file = find_theme_file(this.proxy.icon_theme_path, wanted);
+            const key = `named:${this.proxy.icon_theme_path}:${wanted}:${theme_file ? 1 : 0}`;
             if (this._icon_key === key) return;
             this._icon_key = key;
-            const theme_file = find_theme_file(this.proxy.icon_theme_path, wanted);
             this._icon.gicon = theme_file ? new Gio.FileIcon({ file: theme_file }) : new Gio.ThemedIcon({ name: wanted });
             return;
         }
@@ -114,7 +125,10 @@ class ShoalPanelIcon extends PanelMenu.Button {
         const best = select_best_pixmap(pixmaps, size);
         if (best) {
             try {
-                const px_key = `px:${is_attn ? 1 : 0}:${best.width}x${best.height}:${best.bytes[0] ?? 0}:${best.bytes[best.bytes.length >> 1] ?? 0}`;
+                let hash = 2166136261;
+                const b = best.bytes, blen = b.length ?? b.byteLength ?? 0, step = Math.max(1, blen >> 8);
+                for (let i = 0; i < blen; i += step) hash = Math.imul(hash ^ b[i], 16777619) >>> 0;
+                const px_key = `px:${is_attn ? 1 : 0}:${best.width}x${best.height}:${hash}`;
                 if (this._icon_key === px_key) return;
                 const rgba = argb32_to_rgba(best.bytes, best.width * best.height);
                 const content = St.ImageContent.new_with_preferred_size(best.width, best.height);
@@ -122,9 +136,7 @@ class ShoalPanelIcon extends PanelMenu.Button {
                 if (content.set_bytes.length >= 6) {
                     const cogl_ctx = global.stage.context.get_backend().get_cogl_context();
                     content.set_bytes(cogl_ctx, gbytes, fmt, best.width, best.height, best.width * 4);
-                } else {
-                    content.set_bytes(gbytes, fmt, best.width, best.height, best.width * 4);
-                }
+                } else content.set_bytes(gbytes, fmt, best.width, best.height, best.width * 4);
                 this._icon_key = px_key;
                 this._icon.gicon = content;
                 return;
@@ -139,7 +151,6 @@ class ShoalPanelIcon extends PanelMenu.Button {
         this._icon.icon_size = compute_effective_icon_size(this.settings.icon_size());
         this._icon.style = build_icon_inline_style(this.settings.icon_size());
         this._icon.opacity = compute_icon_opacity(this.settings.icon_opacity());
-
         const fx = compute_effect_params(
             this.settings.icon_saturation(), this.settings.icon_brightness(), this.settings.icon_contrast(),
         );
@@ -152,7 +163,6 @@ class ShoalPanelIcon extends PanelMenu.Button {
             this._icon.remove_effect_by_name('shoal-desaturate');
             this._desat_fx = null;
         }
-
         if (fx.has_brightness_contrast) {
             if (!this._bc_fx) {
                 this._bc_fx = new Clutter.BrightnessContrastEffect();
@@ -178,10 +188,7 @@ class ShoalPanelIcon extends PanelMenu.Button {
             return;
         }
         const had_dbus_menu = Boolean(this.dbus_menu);
-        if (this.dbus_menu) {
-            this.dbus_menu.destroy();
-            this.dbus_menu = null;
-        }
+        if (this.dbus_menu) { this.dbus_menu.destroy(); this.dbus_menu = null; }
         if (!had_dbus_menu && !prefs_changed) return;
         this.menu.removeAll();
         if (show_prefs) {
@@ -200,23 +207,22 @@ class ShoalPanelIcon extends PanelMenu.Button {
             else if (dir === Clutter.ScrollDirection.DOWN) this.proxy.scroll(-120, 'vertical');
             else if (dir === Clutter.ScrollDirection.LEFT) this.proxy.scroll(-120, 'horizontal');
             else if (dir === Clutter.ScrollDirection.RIGHT) this.proxy.scroll(120, 'horizontal');
+            else if (dir === Clutter.ScrollDirection.SMOOTH) {
+                const [dx, dy] = event.get_scroll_delta();
+                if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dy) > 0.05) this.proxy.scroll(-dy * 120, 'vertical');
+                else if (Math.abs(dx) > 0.05) this.proxy.scroll(dx * 120, 'horizontal');
+            } else return Clutter.EVENT_PROPAGATE;
             return Clutter.EVENT_STOP;
         }
-        if (etype !== Clutter.EventType.BUTTON_PRESS && etype !== Clutter.EventType.TOUCH_BEGIN) {
-            return Clutter.EVENT_PROPAGATE;
-        }
+        if (etype !== Clutter.EventType.BUTTON_PRESS && etype !== Clutter.EventType.TOUCH_BEGIN) return Clutter.EVENT_PROPAGATE;
         const [x, y] = event.get_coords();
         const button = etype === Clutter.EventType.BUTTON_PRESS ? event.get_button() : 1;
 
         if (button === 1) {
-            if (this.proxy.item_is_menu || (!this.proxy.id && this.dbus_menu)) {
-                this.menu.toggle();
-            } else {
+            if (this.proxy.item_is_menu || (this.proxy._has_loaded && !this.proxy.id && this.dbus_menu)) this.menu.toggle();
+            else {
                 this.menu.close();
-                this.proxy.activate(x, y, () => {
-                    if (this.dbus_menu) this.menu.open();
-                    else this.proxy?.context_menu(x, y);
-                });
+                this.proxy.activate(x, y, () => (this.dbus_menu ? this.menu.open() : this.proxy?.context_menu(x, y)));
             }
             return Clutter.EVENT_STOP;
         }
@@ -239,10 +245,7 @@ class ShoalPanelIcon extends PanelMenu.Button {
         if (this._menu_id && this.menu) try { this.menu.disconnect(this._menu_id); } catch (_e) { /* ignore */ }
         this._evt_id = 0;
         this._menu_id = 0;
-        if (this.dbus_menu) {
-            this.dbus_menu.destroy();
-            this.dbus_menu = null;
-        }
+        if (this.dbus_menu) { this.dbus_menu.destroy(); this.dbus_menu = null; }
         this._desat_fx = null;
         this._bc_fx = null;
         this.proxy = null;
