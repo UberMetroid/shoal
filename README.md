@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="brand/icon-160.png" width="128" height="128" alt="Shoal Icon" />
+</p>
+
 # Shoal
 
 [![CI & EGO Bundle Verification](https://github.com/UberMetroid/shoal/actions/workflows/ci.yml/badge.svg)](https://github.com/UberMetroid/shoal/actions/workflows/ci.yml)
@@ -8,7 +12,7 @@
 
 **Shoal** (`shoal@ubermetroid.github.io`) is a fast, zero-subprocess, Wayland-native **AppIndicator, KStatusNotifierItem (`SNI`), DBusMenu, and Legacy XWayland System Tray** extension for **GNOME Shell 45–50**. It brings crisp top-bar tray icons, native GNOME Shell popup menus, real-time monochrome/contrast Clutter shader effects, custom per-app icon overrides, and a **4-tab Libadwaita Settings & About dialog** to your desktop.
 
-Derived from [Ubuntu AppIndicator and KStatusNotifierItem Support](https://github.com/ubuntu/gnome-shell-extension-appindicator) (`appindicatorsupport@rgcjonas.gmail.com`) — stripped of legacy subprocess bus scanners (`tools/busAnalyzer.js`), custom pre-ES2022 promise wrappers, and constructor side effects, and engineered under the same strict [`AGENTS.md`](AGENTS.md) Page Rule and EGO standards as [**Kelp**](https://github.com/UberMetroid/kelp) and [**Reef**](https://github.com/UberMetroid/reef).
+Derived from [Ubuntu AppIndicator and KStatusNotifierItem Support](https://github.com/ubuntu/gnome-shell-extension-appindicator) (`appindicatorsupport@rgcjonas.gmail.com`) — stripped of legacy subprocess bus scanners (`tools/busAnalyzer.js`), custom pre-ES2022 promise wrappers, and constructor side effects, and engineered under the same strict [`AGENTS.md`](AGENTS.md) Page Rule and EGO standards as [**Kelp**](https://github.com/UberMetroid/kelp) and [**Reef**](https://github.com/UberMetroid/reef). Official project artwork is archived in [`brand/`](brand/) (`icon-512.png`, `icon-256.png`, `icon-160.png`, `favicon-64.png`).
 
 > 🎓 **Support Shoal — [Tuition, Not Coffee — Help send my daughter to college](https://ubermetroid.github.io/tuition-not-coffee)** · 🌐 [**Project Website (`ubermetroid.github.io/shoal`)**](https://ubermetroid.github.io/shoal/) · ⭐ [**Star UberMetroid/shoal on GitHub**](https://github.com/UberMetroid/shoal)
 
