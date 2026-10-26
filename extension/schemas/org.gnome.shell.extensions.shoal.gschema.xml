@@ -61,10 +61,5 @@
       <summary>Show Shoal Settings shortcut in indicator menus</summary>
       <description>Appends a "Shoal Settings &amp; About…" item to indicator popup menus.</description>
     </key>
-    <key name="custom-icons" type="a(sss)">
-      <default>[]</default>
-      <summary>Custom icon theme overrides per indicator ID</summary>
-      <description>Array of (indicator_id, normal_icon_name, attention_icon_name) tuples.</description>
-    </key>
   </schema>
 </schemalist>

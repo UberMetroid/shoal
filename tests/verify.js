@@ -13,13 +13,9 @@ import {
     resolve_panel_box_name,
 } from '../extension/ui/icon_style.js';
 import {
-    MAX_CUSTOM_ICONS, normalize_custom_icons, remove_custom_icon,
-    resolve_custom_icon, upsert_custom_icon,
-} from '../extension/ui/settings/custom_icons.js';
-import {
     ExtensionSettings, MIDDLE_CLICK_ACTIONS, TRAY_POSITIONS,
 } from '../extension/ui/settings/gsettings.js';
-import { build_about_page, build_custom_icons_page } from '../extension/ui/settings/prefs_pages.js';
+import { build_about_page } from '../extension/ui/settings/prefs_pages.js';
 
 const BANNED_STEMS = new Set([
     'util', 'utils', 'lib', 'helper', 'helpers', 'common', 'misc', 'shared', 'base', 'core', 'types', 'mod',
@@ -55,7 +51,7 @@ function walk_repo(dir_path, js_files, dirs) {
 }
 
 function verify_page_rules_and_lint(js_files, dirs) {
-    assert(js_files.length === 13, `expected 13 .js files, found ${js_files.length}`);
+    assert(js_files.length === 12, `expected 12 .js files, found ${js_files.length}`);
     const legacy = [
         'imports.gi', 'imports.ui', 'imports.misc', 'ExtensionUtils',
         'Meta.LaterType', 'Clutter.Container', 'add_actor', 'remove_actor',
@@ -111,7 +107,7 @@ function verify_page_rules_and_lint(js_files, dirs) {
 function verify_process_boundaries_and_invariants() {
     const shared = [
         'prefs.js', 'tray/dbus_specs.js', 'ui/icon_style.js',
-        'ui/settings/gsettings.js', 'ui/settings/custom_icons.js', 'ui/settings/prefs_pages.js',
+        'ui/settings/gsettings.js', 'ui/settings/prefs_pages.js',
     ];
     const compositor_only = ['gi://Meta', 'gi://Clutter', 'gi://St', 'gi://Shell', 'resource:///org/gnome/shell/'];
     for (const rel of shared) {
@@ -137,7 +133,7 @@ function verify_process_boundaries_and_invariants() {
         'Derived from Ubuntu AppIndicator Support', 'org.kde.StatusNotifierWatcher',
         'org.freedesktop.StatusNotifierWatcher', '[shoal] sni-refresh', '[shoal] dbusmenu-reload',
         '"45"', '"50"', '"settings-schema": "org.gnome.shell.extensions.shoal"',
-        'name="tray-pos"', 'name="custom-icons"', 'v1.0.0',
+        'name="tray-pos"', 'v1.0.0',
         'this.unload_theme()', 'load_stylesheet(file)', 'Support &amp; Community',
     ];
     for (const req of reqs) assert(combined.includes(req), `Missing invariant: ${req}`);
@@ -163,7 +159,7 @@ async function verify_behavioral_and_gtk_suite() {
 
     assert(s.tray_pos() === 'right' && s.tray_order() === 1 && s.compact_mode() && s.legacy_tray_enabled(), 'defaults');
     assert(s.icon_size() === 0 && s.icon_opacity() === 255 && s.icon_saturation() === 0, 'icon defaults');
-    assert(TRAY_POSITIONS.length === 3 && MIDDLE_CLICK_ACTIONS.length === 3 && MAX_CUSTOM_ICONS === 64, 'enums');
+    assert(TRAY_POSITIONS.length === 3 && MIDDLE_CLICK_ACTIONS.length === 3, 'enums');
 
     s.set_tray_pos('left');
     assert(s.tray_pos() === 'left' && resolve_panel_box_name(s.tray_pos()) === 'left', 'tray pos left');
@@ -183,15 +179,8 @@ async function verify_behavioral_and_gtk_suite() {
     assert(build_indicator_style_classes(true, true).includes('shoal-indicator-attention'), 'style classes');
     assert(build_icon_inline_style(24) === 'icon-size: 24px;' && build_icon_inline_style(0) === '', 'inline style');
 
-    let overrides = upsert_custom_icon([], 'Discord', 'discord-symbolic', 'mail-unread-symbolic');
-    overrides = upsert_custom_icon(overrides, 'steam', 'steam-tray-symbolic', '');
-    s.set_custom_icons(overrides);
-    assert(s.custom_icons().length === 2, 'custom icons saved');
-    assert(resolve_custom_icon(s.custom_icons(), 'discord-client', '', false) === 'discord-symbolic', 'match normal');
-    assert(resolve_custom_icon(s.custom_icons(), 'discord-client', '', true) === 'mail-unread-symbolic', 'match attn');
-    assert(remove_custom_icon(normalize_custom_icons(overrides), 'DISCORD').length === 1, 'remove custom icon');
     s.reset_defaults();
-    assert(s.tray_pos() === 'right' && s.icon_size() === 0 && s.custom_icons().length === 0, 'reset defaults');
+    assert(s.tray_pos() === 'right' && s.icon_size() === 0, 'reset defaults');
 
     assert(WATCHER_XML.includes('StatusNotifierWatcher') && ITEM_XML.includes('StatusNotifierItem') && DBUSMENU_XML.includes('com.canonical.dbusmenu'), 'dbus xml');
     const p1 = parse_sni_service('/org/ayatana/NotificationItem/steam', ':1.42'), p2 = parse_sni_service('org.kde.StatusNotifierItem-99-1', ':1.99');
@@ -208,11 +197,9 @@ async function verify_behavioral_and_gtk_suite() {
         const Adw = (await import('gi://Adw?version=1')).default;
         if (Gtk.init_check()) {
             Adw.init();
-            const signals = [];
-            const page_c = build_custom_icons_page(ext_settings, s, signals);
             const page_a = build_about_page();
-            assert(page_c.get_title() === 'Custom Icons' && page_a.get_title() === 'About & Support', 'GTK4 pages');
-            let root_to_walk = [page_c, page_a];
+            assert(page_a.get_title() === 'About & Support', 'GTK4 pages');
+            let root_to_walk = [page_a];
             const gres = '/usr/share/gnome-shell/org.gnome.Shell.Extensions.src.gresource';
             if (Gio.File.new_for_path(gres).query_exists(null)) {
                 Gio.resources_register(Gio.Resource.load(gres));
@@ -233,7 +220,6 @@ async function verify_behavioral_and_gtk_suite() {
                 for (let c = w.get_first_child?.(); c; c = c.get_next_sibling?.()) walk_labels(c);
             };
             for (const r of root_to_walk) walk_labels(r);
-            for (const [obj, sig] of signals) obj.disconnect(sig);
         }
     } catch (e) {
         if (String(e).includes('Verification failed')) throw e;

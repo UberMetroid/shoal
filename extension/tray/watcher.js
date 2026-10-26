@@ -186,7 +186,7 @@ export class TrayWatcher {
         }
         const style_keys = [
             'compact-mode', 'icon-size', 'icon-opacity', 'icon-saturation',
-            'icon-brightness', 'icon-contrast', 'show-settings-in-menu', 'custom-icons',
+            'icon-brightness', 'icon-contrast', 'show-settings-in-menu',
         ];
         for (const k of style_keys) {
             if (this.ext_settings.settings_schema?.has_key(k)) {

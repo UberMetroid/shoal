@@ -13,7 +13,6 @@ import {
     build_icon_inline_style, compute_effect_params,
     compute_effective_icon_size, compute_icon_opacity,
 } from '../ui/icon_style.js';
-import { resolve_custom_icon } from '../ui/settings/custom_icons.js';
 import { DBusMenuClient } from './dbus_menu.js';
 import { argb32_to_rgba, select_best_pixmap } from './dbus_specs.js';
 
@@ -98,9 +97,8 @@ class ShoalPanelIcon extends PanelMenu.Button {
 
     _update_icon_gicon(is_attn) {
         const size = compute_effective_icon_size(this.settings.icon_size());
-        const custom = resolve_custom_icon(this.settings.custom_icons(), this.proxy.id, this.proxy.title, is_attn);
-        const wanted = custom || (is_attn && this.proxy.attention_icon_name
-            ? this.proxy.attention_icon_name : this.proxy.icon_name);
+        const wanted = is_attn && this.proxy.attention_icon_name
+            ? this.proxy.attention_icon_name : this.proxy.icon_name;
 
         if (wanted) {
             const theme_file = find_theme_file(this.proxy.icon_theme_path, wanted);

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Multi-tab GTK4 / Libadwaita preferences UI for Shoal tray placement, icon effects, and overrides.
+// Multi-tab GTK4 / Libadwaita preferences UI for Shoal tray placement and icon effects.
 
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import { ExtensionSettings, MIDDLE_CLICK_ACTIONS, TRAY_POSITIONS } from './ui/settings/gsettings.js';
-import { build_about_page, build_custom_icons_page } from './ui/settings/prefs_pages.js';
+import { build_about_page } from './ui/settings/prefs_pages.js';
 
 function make_switch_row(title, subtitle, active, on_toggle) {
     const row = new Adw.ActionRow({ title, subtitle });
@@ -185,7 +185,6 @@ export default class ShoalPreferences extends ExtensionPreferences {
         window.set_default_size(760, 680);
         window.add(build_tray_page(ext_settings, settings, signals));
         window.add(build_icons_page(ext_settings, settings, signals));
-        window.add(build_custom_icons_page(ext_settings, settings, signals));
         window.add(build_about_page());
         window.connect('close-request', () => {
             for (const [obj, sig] of signals) obj.disconnect(sig);

@@ -10,7 +10,7 @@
 [![Sponsor: Tuition, Not Coffee](https://img.shields.io/badge/Sponsor-Tuition%2C%20Not%20Coffee%20%F0%9F%8E%93-2ec27e)](https://ubermetroid.github.io/tuition-not-coffee)
 [![Star on GitHub](https://img.shields.io/github/stars/UberMetroid/shoal?style=social)](https://github.com/UberMetroid/shoal)
 
-**Shoal** (`shoal@ubermetroid.github.io`) is a fast, zero-subprocess, Wayland-native **AppIndicator, KStatusNotifierItem (`SNI`), DBusMenu, and Legacy XWayland System Tray** extension for **GNOME Shell 45–50**. It brings crisp top-bar tray icons, native GNOME Shell popup menus, real-time monochrome/contrast Clutter shader effects, custom per-app icon overrides, and a **4-tab Libadwaita Settings & About dialog** to your desktop.
+**Shoal** (`shoal@ubermetroid.github.io`) is a fast, zero-subprocess, Wayland-native **AppIndicator, KStatusNotifierItem (`SNI`), DBusMenu, and Legacy XWayland System Tray** extension for **GNOME Shell 45–50**. It brings crisp top-bar tray icons, native GNOME Shell popup menus, real-time monochrome/contrast Clutter shader effects, and a **3-tab Libadwaita Settings & About dialog** to your desktop.
 
 Derived from [Ubuntu AppIndicator and KStatusNotifierItem Support](https://github.com/ubuntu/gnome-shell-extension-appindicator) (`appindicatorsupport@rgcjonas.gmail.com`) — stripped of legacy subprocess bus scanners (`tools/busAnalyzer.js`), custom pre-ES2022 promise wrappers, and constructor side effects, and engineered under the same strict [`AGENTS.md`](AGENTS.md) Page Rule and EGO standards as [**Kelp**](https://github.com/UberMetroid/kelp) and [**Reef**](https://github.com/UberMetroid/reef). Official project artwork is archived in [`brand/`](brand/) (`icon-512.png`, `icon-256.png`, `icon-160.png`, `favicon-64.png`).
 
@@ -25,7 +25,7 @@ Derived from [Ubuntu AppIndicator and KStatusNotifierItem Support](https://githu
 | **Zero-Subprocess D-Bus Watcher** | **Active** | Owns `org.kde.StatusNotifierWatcher` and `org.freedesktop.StatusNotifierWatcher` and scans running tray apps asynchronously via `Gio.DBus.session` — zero external `gjs` helper subprocesses (`0 shexli findings`). |
 | **Universal App Packaging Support** | **Built-in** | Works out of the box with **Flatpak, Snap, AppImage, `.rpm`, `.deb`, `pacman`, Steam, Discord, Synology Drive, Nextcloud, and Electron** via `IconThemePath`, themed icon names, and ARGB32 `IconPixmap` streams. |
 | **Native `com.canonical.dbusmenu`** | **Built-in** | Renders nested submenus, checkmarks, radio items, separators, and menu icons inside native GNOME Shell `PopupMenu` widgets, plus an optional **Shoal Settings & About…** shortcut. |
-| **Real-Time Clutter Shader Effects** | **Configurable** | Harmonize colorful third-party tray icons with your GNOME top bar using GPU-accelerated desaturation (`0–100%`), brightness, contrast, opacity, and custom per-app symbolic icon overrides. |
+| **Real-Time Clutter Shader Effects** | **Configurable** | Harmonize colorful third-party tray icons with your GNOME top bar using GPU-accelerated desaturation (`0–100%`), brightness, contrast, and opacity. |
 | **Mouse-Wheel & Middle-Click Actions** | **Active** | Scroll over tray icons to adjust volume/zoom (`Scroll(delta, orientation)`), left-click to activate (`Activate(x, y)`), and middle-click to trigger `SecondaryActivate(x, y)`. |
 
 ---
@@ -39,7 +39,7 @@ gnome-extensions install --force shoal@ubermetroid.github.io.shell-extension.zip
 gnome-extensions enable shoal@ubermetroid.github.io
 ```
 
-Open the 4-tab Libadwaita Preferences window anytime by right-clicking any tray icon and choosing **Shoal Settings & About…**, or by running:
+Open the 3-tab Libadwaita Preferences window anytime by right-clicking any tray icon and choosing **Shoal Settings & About…**, or by running:
 
 ```bash
 gnome-extensions prefs shoal@ubermetroid.github.io
@@ -47,14 +47,13 @@ gnome-extensions prefs shoal@ubermetroid.github.io
 
 ---
 
-## 4-Tab Libadwaita Settings & About Window
+## 3-Tab Libadwaita Settings & About Window
 
 | Tab | Controls Included |
 | :--- | :--- |
 | **1. Tray & Panel** | Top Bar Position (`Right Box — Near Quick Settings`, `Center Box — Near Clock`, `Left Box — Near Activities`), Top Bar Order Index (`0–10`), Compact Indicator Spacing toggle, Legacy XWayland System Tray (`Shell.TrayManager`) toggle, Middle-Click Action (`Secondary Activate`, `Open Context Menu`, `Disabled`), Scroll Wheel Forwarding toggle, Show `"Shoal Settings & About…"` in Tray Menus toggle, and **Reset to Shoal Defaults**. |
 | **2. Icons & Effects** | Icon Size Override (`0 = Auto`, `16–48 px`), Icon Opacity (`64–255`), Desaturation Toward Monochrome (`0–100%`), Icon Brightness Shift (`-100%` to `+100%`), and Icon Contrast Shift (`-100%` to `+100%`). |
-| **3. Custom Icons** | Add or remove custom icon overrides mapping any Indicator ID or App Title (`discord`, `steam`, `synology`, `nextcloud`) to custom normal and attention theme icon names, plus 1-click symbolic presets. |
-| **4. About & Support** | Release version (`v1.0.0`), `GPL-3.0-or-later` license & Ubuntu AppIndicator attribution, **Star Shoal on GitHub**, **Tuition, Not Coffee — Help send my daughter to college**, **Project Website**, and **Report an Issue**. |
+| **3. About & Support** | Release version (`v1.0.0`), `GPL-3.0-or-later` license & Ubuntu AppIndicator attribution, **Star Shoal on GitHub**, **Tuition, Not Coffee — Help send my daughter to college**, **Project Website**, and **Report an Issue**. |
 
 ---
 

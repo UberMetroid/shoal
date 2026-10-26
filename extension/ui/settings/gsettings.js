@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Typed wrapper (ExtensionSettings) around Shoal GSettings schema keys and defaults.
 
-import GLib from 'gi://GLib';
-import { normalize_custom_icons } from './custom_icons.js';
-
 export const TRAY_POSITIONS = Object.freeze(['right', 'center', 'left']);
 export const MIDDLE_CLICK_ACTIONS = Object.freeze(['secondary-activate', 'open-menu', 'none']);
 
@@ -90,18 +87,6 @@ export class ExtensionSettings {
         }
     }
 
-    custom_icons() {
-        if (!this.ext.settings_schema?.has_key('custom-icons')) return [];
-        const raw = this.ext.get_value('custom-icons').deep_unpack();
-        return normalize_custom_icons(raw);
-    }
-
-    set_custom_icons(entries) {
-        if (!this.ext.settings_schema?.has_key('custom-icons')) return;
-        const clean = normalize_custom_icons(entries);
-        this.ext.set_value('custom-icons', new GLib.Variant('a(sss)', clean));
-    }
-
     reset_defaults() {
         this.set_tray_pos('right');
         this.set_tray_order(1);
@@ -115,6 +100,5 @@ export class ExtensionSettings {
         this.set_middle_click_action('secondary-activate');
         this.set_scroll_enabled(true);
         this.set_show_settings_in_menu(true);
-        this.set_custom_icons([]);
     }
 }
