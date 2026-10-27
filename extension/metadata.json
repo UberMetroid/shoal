@@ -1,11 +1,11 @@
 {
-    "name": "Shoal",
+    "name": "Studio 2201: Shoal (System Tray)",
     "description": "Zero-subprocess, Wayland-native AppIndicator, KStatusNotifierItem, DBusMenu, and legacy system tray support for GNOME Shell.\n\nDerived from Ubuntu AppIndicator Support (GPL-2.0-or-later / GPL-3.0-or-later).",
     "uuid": "shoal@ubermetroid.github.io",
     "url": "https://github.com/UberMetroid/shoal",
     "settings-schema": "org.gnome.shell.extensions.shoal",
     "gettext-domain": "shoal@ubermetroid.github.io",
-    "version-name": "1.0.1",
+    "version-name": "1.1.0",
     "shell-version": [
         "45",
         "46",
