@@ -144,7 +144,7 @@ function verify_process_boundaries_and_invariants() {
         'Derived from Ubuntu AppIndicator Support', 'org.kde.StatusNotifierWatcher',
         'org.freedesktop.StatusNotifierWatcher', '[shoal] sni-refresh', '[shoal] dbusmenu-reload',
         '"45"', '"50"', '"settings-schema": "org.gnome.shell.extensions.shoal"',
-        'name="tray-pos"', 'v1.1.0', '"name": "Studio 2201: Shoal (System Tray)"',
+        'name="tray-pos"', 'v1.2.0', '"name": "Studio 2201: Shoal (System Tray)"',
         'this.unload_theme()', 'load_stylesheet(file)', 'Support &amp; Community',
         'NewMenu', 'NewIconThemePath', 'MAX_PATH_CACHE = 128', 'clear_icon_path_cache()',
         'this._active_names.size > 0', 'target.set_child_at_index(', '_fetch_ayatana_label()',
