@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Typed wrapper (ExtensionSettings) around Shoal GSettings schema keys and defaults.
 
+import { format_rgba, parse_rgba } from './color.js';
+
 export const TRAY_POSITIONS = Object.freeze(['right', 'center', 'left']);
 export const MIDDLE_CLICK_ACTIONS = Object.freeze(['secondary-activate', 'open-menu', 'none']);
+const DEFAULT_ATTENTION_COLOR = 'rgb(255,0,0)';
 
 const BOOL_KEYS = Object.freeze([
     'compact-mode',
@@ -87,6 +90,21 @@ export class ExtensionSettings {
         }
     }
 
+    attention_color_rgba() {
+        const raw = this.ext.settings_schema?.has_key('attention-color-rgba')
+            ? this.ext.get_string('attention-color-rgba')
+            : DEFAULT_ATTENTION_COLOR;
+        return format_rgba(parse_rgba(raw || DEFAULT_ATTENTION_COLOR));
+    }
+
+    set_attention_color_rgba(v) {
+        if (!this.ext.settings_schema?.has_key('attention-color-rgba')) return;
+        const next = format_rgba(parse_rgba(v || DEFAULT_ATTENTION_COLOR));
+        if (this.ext.get_string('attention-color-rgba') !== next) {
+            this.ext.set_string('attention-color-rgba', next);
+        }
+    }
+
     reset_defaults() {
         this.set_tray_pos('right');
         this.set_tray_order(1);
@@ -100,5 +118,6 @@ export class ExtensionSettings {
         this.set_middle_click_action('secondary-activate');
         this.set_scroll_enabled(true);
         this.set_show_settings_in_menu(true);
+        this.set_attention_color_rgba(DEFAULT_ATTENTION_COLOR);
     }
 }

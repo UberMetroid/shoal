@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Pure panel geometry, icon sizing, opacity, and desaturation/brightness/contrast math.
 
+import { format_rgba, parse_rgba } from './settings/color.js';
+
 export const DEFAULT_PANEL_ICON_SIZE = 16;
 
 export function resolve_panel_box_name(tray_pos) {
@@ -46,9 +48,10 @@ export function build_indicator_style_classes(compact_mode, is_attention = false
     return classes;
 }
 
-export function build_icon_inline_style(icon_size_setting) {
+export function build_icon_inline_style(icon_size_setting, is_attention = false, attention_color_rgba = '') {
+    const parts = [];
     const n = Math.round(Number(icon_size_setting) || 0);
-    if (n <= 0) return '';
-    const clamped = Math.max(16, Math.min(48, n));
-    return `icon-size: ${clamped}px;`;
+    if (n > 0) parts.push(`icon-size: ${Math.max(16, Math.min(48, n))}px;`);
+    if (is_attention && attention_color_rgba) parts.push(`color: ${format_rgba(parse_rgba(attention_color_rgba))};`);
+    return parts.join(' ');
 }

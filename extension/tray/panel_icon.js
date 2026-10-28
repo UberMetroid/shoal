@@ -103,7 +103,7 @@ class ShoalPanelIcon extends PanelMenu.Button {
         this._label.visible = lbl.length > 0;
 
         this._update_icon_gicon(is_attn);
-        this.apply_visual_style();
+        this.apply_visual_style(is_attn);
         this._sync_dbus_menu();
     }
 
@@ -146,10 +146,10 @@ class ShoalPanelIcon extends PanelMenu.Button {
         this._icon.icon_name = 'application-x-executable-symbolic';
     }
 
-    apply_visual_style() {
+    apply_visual_style(is_attn = (this.proxy?.status === 'NeedsAttention')) {
         if (!this.settings || !this._icon) return;
         this._icon.icon_size = compute_effective_icon_size(this.settings.icon_size());
-        this._icon.style = build_icon_inline_style(this.settings.icon_size());
+        this._icon.style = build_icon_inline_style(this.settings.icon_size(), is_attn, this.settings.attention_color_rgba());
         this._icon.opacity = compute_icon_opacity(this.settings.icon_opacity());
         const fx = compute_effect_params(
             this.settings.icon_saturation(), this.settings.icon_brightness(), this.settings.icon_contrast(),

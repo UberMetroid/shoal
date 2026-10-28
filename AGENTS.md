@@ -30,7 +30,8 @@ Shoal (`shoal@studio2201.github.io`) is built on four uncompromising engineering
 ## 3. Process-Boundary & GNOME Shell / EGO Lifecycle Invariants (`tests/verify.js`)
 
 - **ES2022 Strictness**: Zero `var` declarations (`const`/`let` only) and zero loose equality operators (`===`/`!==` only).
-- **Process Boundary Separation**: `extension/prefs.js` runs in the GTK4 `gnome-extensions-app` process. Neither `prefs.js` nor any module in its import chain (`tray/dbus_specs.js`, `ui/icon_style.js`, `ui/settings/gsettings.js`, `ui/settings/prefs_pages.js`) may import compositor-only typelibs (`gi://Meta`, `gi://Clutter`, `gi://St`, `gi://Shell`, `resource:///org/gnome/shell/*`).
+- **Process Boundary Separation**: `extension/prefs.js` runs in the GTK4 `gnome-extensions-app` process. Neither `prefs.js` nor any module in its import chain (`tray/dbus_specs.js`, `ui/icon_style.js`, `ui/settings/color.js` | `16..=256` | CSS color parser, sRGB relative luminance calculator, and 6-extension `SUITE_COLOR_TARGETS` sync
+`ui/settings/gsettings.js`, `ui/settings/prefs_pages.js`) may import compositor-only typelibs (`gi://Meta`, `gi://Clutter`, `gi://St`, `gi://Shell`, `resource:///org/gnome/shell/*`).
 - **Deterministic EGO Teardown**: `extension/extension.js` performs zero top-level work at import time and deterministically cleans up all `Gio.bus_own_name_on_connection` handles, `Gio.bus_watch_name_on_connection` watchers, exported D-Bus objects, `Gio.Cancellable` instances, named `GLib` timers, panel buttons, and `Shell.TrayManager` instances on `disable()`.
 
 ---

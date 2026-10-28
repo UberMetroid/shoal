@@ -8,8 +8,9 @@ import {
     DEFAULT_PANEL_ICON_SIZE, build_icon_inline_style, build_indicator_style_classes,
     compute_effect_params, compute_effective_icon_size, compute_icon_opacity, resolve_panel_box_name,
 } from '../extension/ui/icon_style.js';
+import { SUITE_COLOR_TARGETS, format_rgba, is_dark_rgba, parse_rgba, sync_color_across_suite, text_color_for_css } from '../extension/ui/settings/color.js';
 import { ExtensionSettings, MIDDLE_CLICK_ACTIONS, TRAY_POSITIONS } from '../extension/ui/settings/gsettings.js';
-import { build_about_page } from '../extension/ui/settings/prefs_pages.js';
+import { BORDER_PRESETS, build_about_page } from '../extension/ui/settings/prefs_pages.js';
 
 const BANNED_STEMS = new Set([
     'util', 'utils', 'lib', 'helper', 'helpers', 'common', 'misc', 'shared', 'base', 'core', 'types', 'mod',
@@ -61,7 +62,7 @@ function strip_strings_and_line_comment(raw) {
 }
 
 function verify_page_rules_and_lint(js_files, dirs) {
-    assert(js_files.length === 12, `expected 12 .js files, found ${js_files.length}`);
+    assert(js_files.length === 13, `expected 13 .js files, found ${js_files.length}`);
     const legacy = [
         'imports.gi', 'imports.ui', 'imports.misc', 'ExtensionUtils',
         'Meta.LaterType', 'Clutter.Container', 'add_actor', 'remove_actor',
@@ -117,7 +118,7 @@ function verify_page_rules_and_lint(js_files, dirs) {
 function verify_process_boundaries_and_invariants() {
     const shared = [
         'prefs.js', 'tray/dbus_specs.js', 'ui/icon_style.js',
-        'ui/settings/gsettings.js', 'ui/settings/prefs_pages.js',
+        'ui/settings/color.js', 'ui/settings/gsettings.js', 'ui/settings/prefs_pages.js',
     ];
     const compositor_only = ['gi://Meta', 'gi://Clutter', 'gi://St', 'gi://Shell', 'resource:///org/gnome/shell/'];
     for (const rel of shared) {
@@ -144,7 +145,8 @@ function verify_process_boundaries_and_invariants() {
         'Derived from Ubuntu AppIndicator Support', 'org.kde.StatusNotifierWatcher',
         'org.freedesktop.StatusNotifierWatcher', '[shoal] sni-refresh', '[shoal] dbusmenu-reload',
         '"45"', '"50"', '"settings-schema": "org.gnome.shell.extensions.shoal"',
-        'name="tray-pos"', 'v1.3.0', '"name": "Studio 2201: Shoal (System Tray)"',
+        'name="tray-pos"', 'name="attention-color-rgba"', 'v1.4.0', '"name": "Studio 2201: Shoal (System Tray)"',
+        'Sync Color Across Suite', 'sync_color_across_suite', 'BORDER_PRESETS',
         'this.unload_theme()', 'load_stylesheet(file)', 'Support &amp; Community',
         'NewMenu', 'NewIconThemePath', 'MAX_PATH_CACHE = 128', 'clear_icon_path_cache()',
         'this._active_names.size > 0', 'target.set_child_at_index(', '_fetch_ayatana_label()',
@@ -165,37 +167,34 @@ async function verify_behavioral_and_gtk_suite() {
     assert(Gio.Subprocess.new(['glib-compile-schemas', tmp_dir], Gio.SubprocessFlags.NONE).wait_check(null),
         'glib-compile-schemas');
     const src = Gio.SettingsSchemaSource.new_from_directory(tmp_dir, Gio.SettingsSchemaSource.get_default(), false);
+    const mem_backend = Gio.memory_settings_backend_new();
     const ext_settings = new Gio.Settings({
         settings_schema: src.lookup('org.gnome.shell.extensions.shoal', true),
-        backend: Gio.memory_settings_backend_new(),
+        backend: mem_backend,
     });
     const s = new ExtensionSettings(ext_settings);
-
+    const suite_dir = GLib.build_filenamev([tmp_dir, 'shoal@studio2201.github.io', 'schemas']);
+    const suite_comp = GLib.build_filenamev([suite_dir, 'gschemas.compiled']);
+    GLib.mkdir_with_parents(suite_dir, 0o755);
+    Gio.File.new_for_path(GLib.build_filenamev([tmp_dir, 'gschemas.compiled'])).copy(Gio.File.new_for_path(suite_comp), Gio.FileCopyFlags.OVERWRITE, null, null);
+    assert(SUITE_COLOR_TARGETS.length === 6 && sync_color_across_suite('#6ad7e1', tmp_dir, mem_backend) === 1 && s.attention_color_rgba() === 'rgba(106, 215, 225, 1)', 'suite sync');
+    s.reset_defaults();
+    for (const p of [suite_comp, suite_dir, GLib.build_filenamev([tmp_dir, 'shoal@studio2201.github.io'])]) Gio.File.new_for_path(p).delete(null);
     assert(s.tray_pos() === 'right' && s.tray_order() === 1 && s.compact_mode() && s.legacy_tray_enabled(), 'defaults');
-    assert(s.icon_size() === 0 && s.icon_opacity() === 255 && s.icon_saturation() === 0, 'icon defaults');
-    assert(TRAY_POSITIONS.length === 3 && MIDDLE_CLICK_ACTIONS.length === 3, 'enums');
-
-    s.set_tray_pos('left');
-    assert(s.tray_pos() === 'left' && resolve_panel_box_name(s.tray_pos()) === 'left', 'tray pos left');
-    s.set_tray_pos('invalid');
-    assert(s.tray_pos() === 'right' && resolve_panel_box_name(s.tray_pos()) === 'right', 'tray pos fallback');
-    s.set_icon_size(99);
-    assert(s.icon_size() === 48 && compute_effective_icon_size(s.icon_size()) === 48, 'clamp max icon size');
-    s.set_icon_size(8);
-    assert(s.icon_size() === 16 && compute_effective_icon_size(0) === DEFAULT_PANEL_ICON_SIZE, 'clamp min icon size');
-    s.set_icon_opacity(10);
-    assert(s.icon_opacity() === 64 && compute_icon_opacity(999) === 255, 'clamp opacity');
-    s.set_icon_saturation(0.75);
-    s.set_icon_brightness(-0.25);
-    s.set_icon_contrast(0.5);
+    assert(s.icon_size() === 0 && s.icon_opacity() === 255 && s.icon_saturation() === 0 && s.attention_color_rgba() === 'rgba(255, 0, 0, 1)', 'icon defaults');
+    assert(TRAY_POSITIONS.length === 3 && MIDDLE_CLICK_ACTIONS.length === 3 && BORDER_PRESETS.length === 4, 'enums');
+    assert(text_color_for_css('rgb(0,0,0)') === '#ffffff' && is_dark_rgba(parse_rgba('#000')) && format_rgba(parse_rgba('#f00')) === 'rgba(255, 0, 0, 1)', 'color helpers');
+    s.set_tray_pos('left'); assert(s.tray_pos() === 'left' && resolve_panel_box_name(s.tray_pos()) === 'left', 'tray pos left');
+    s.set_tray_pos('invalid'); assert(s.tray_pos() === 'right' && resolve_panel_box_name(s.tray_pos()) === 'right', 'tray pos fallback');
+    s.set_icon_size(99); assert(s.icon_size() === 48 && compute_effective_icon_size(s.icon_size()) === 48, 'clamp max icon size');
+    s.set_icon_size(8); assert(s.icon_size() === 16 && compute_effective_icon_size(0) === DEFAULT_PANEL_ICON_SIZE, 'clamp min icon size');
+    s.set_icon_opacity(10); assert(s.icon_opacity() === 64 && compute_icon_opacity(999) === 255, 'clamp opacity');
+    s.set_icon_saturation(0.75); s.set_icon_brightness(-0.25); s.set_icon_contrast(0.5);
     const fx = compute_effect_params(s.icon_saturation(), s.icon_brightness(), s.icon_contrast());
     assert(fx.has_desaturate && fx.has_brightness_contrast && fx.desaturate === 0.75, 'effect math');
     assert(build_indicator_style_classes(true, true).includes('shoal-indicator-attention'), 'style classes');
-    assert(build_icon_inline_style(24) === 'icon-size: 24px;' && build_icon_inline_style(0) === '', 'inline style');
-
-    s.reset_defaults();
-    assert(s.tray_pos() === 'right' && s.icon_size() === 0, 'reset defaults');
-
+    assert(build_icon_inline_style(24) === 'icon-size: 24px;' && build_icon_inline_style(0, true, '#2ec27e').includes('rgba(46, 194, 126, 1)') && !build_icon_inline_style(0), 'inline style');
+    s.reset_defaults(); assert(s.tray_pos() === 'right' && s.icon_size() === 0, 'reset defaults');
     assert(WATCHER_XML.includes('StatusNotifierWatcher'), 'dbus xml');
     const p1 = parse_sni_service('/org/ayatana/NotificationItem/steam', ':1.42'), p2 = parse_sni_service('org.kde.StatusNotifierItem-99-1', ':1.99');
     assert(p1.bus_name === ':1.42' && p1.obj_path === '/org/ayatana/NotificationItem/steam' && p2.obj_path === '/StatusNotifierItem', 'sni parse');

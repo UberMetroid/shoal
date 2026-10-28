@@ -2,10 +2,12 @@
 // Multi-tab GTK4 / Libadwaita preferences UI for Shoal tray placement and icon effects.
 
 import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import { format_rgba, parse_rgba, sync_color_across_suite } from './ui/settings/color.js';
 import { ExtensionSettings, MIDDLE_CLICK_ACTIONS, TRAY_POSITIONS } from './ui/settings/gsettings.js';
-import { build_about_page } from './ui/settings/prefs_pages.js';
+import { BORDER_PRESETS, build_about_page } from './ui/settings/prefs_pages.js';
 
 function make_switch_row(title, subtitle, active, on_toggle) {
     const row = new Adw.ActionRow({ title, subtitle });
@@ -164,6 +166,50 @@ function build_icons_page(ext_settings, settings, signals) {
     for (const r of [sat_row, bri_row, con_row]) fx_group.add(r);
     page.add(fx_group);
 
+    const clr_group = new Adw.PreferencesGroup({
+        title: 'Attention Accent &amp; Suite Color Sync',
+        description: 'Customize the NeedsAttention indicator color and sync across all Studio 2201 extensions',
+    });
+    const color_row = new Adw.ActionRow({
+        title: 'Attention Indicator Accent Color',
+        subtitle: 'Custom RGBA color applied to symbolic indicators in NeedsAttention state',
+    });
+    const init_rgba = new Gdk.RGBA();
+    if (!init_rgba.parse(settings.attention_color_rgba())) init_rgba.parse('rgb(255,0,0)');
+    const color_btn = new Gtk.ColorButton({ rgba: init_rgba, use_alpha: true, valign: Gtk.Align.CENTER });
+    color_btn.connect('color-set', () => settings.set_attention_color_rgba(color_btn.get_rgba().to_string()));
+    color_row.add_suffix(color_btn);
+    color_row.activatable_widget = color_btn;
+
+    const preset_labels = [...BORDER_PRESETS.map(([label]) => label), 'Custom Color'];
+    const match_preset = (color) => BORDER_PRESETS.findIndex(([, c]) => format_rgba(parse_rgba(c)) === color);
+    const init_idx = match_preset(settings.attention_color_rgba());
+    const [preset_row, preset_combo] = make_combo_row(
+        'Quick Color Presets', 'One-click presets matching Kelp, Reef, Coral, Seabed, and Tide',
+        preset_labels, init_idx >= 0 ? init_idx : BORDER_PRESETS.length,
+        (idx) => {
+            if (idx >= 0 && idx < BORDER_PRESETS.length) {
+                const css_color = BORDER_PRESETS[idx][1];
+                settings.set_attention_color_rgba(css_color);
+                const next_rgba = new Gdk.RGBA();
+                if (next_rgba.parse(css_color)) color_btn.set_rgba(next_rgba);
+            }
+        },
+    );
+    const sync_row = new Adw.ActionRow({
+        title: 'Sync Color Across Suite',
+        subtitle: 'Apply this accent color to all installed Studio 2201 extensions (Coral, Kelp, Reef, Seabed, Shoal, Tide)',
+    });
+    const sync_btn = new Gtk.Button({ label: 'Sync Suite Color', valign: Gtk.Align.CENTER, css_classes: ['pill'] });
+    sync_btn.connect('clicked', () => {
+        const count = sync_color_across_suite(settings.attention_color_rgba());
+        sync_btn.set_label(`Synced (${count})`);
+    });
+    sync_row.add_suffix(sync_btn);
+    sync_row.activatable_widget = sync_btn;
+    for (const r of [color_row, preset_row, sync_row]) clr_group.add(r);
+    page.add(clr_group);
+
     const sync_fx = () => {
         if (sz_spin.get_value_as_int() !== settings.icon_size()) sz_spin.set_value(settings.icon_size());
         if (op_spin.get_value_as_int() !== settings.icon_opacity()) op_spin.set_value(settings.icon_opacity());
@@ -173,8 +219,14 @@ function build_icons_page(ext_settings, settings, signals) {
         if (bri_spin.get_value_as_int() !== bri_pct) bri_spin.set_value(bri_pct);
         const con_pct = Math.round(settings.icon_contrast() * 100);
         if (con_spin.get_value_as_int() !== con_pct) con_spin.set_value(con_pct);
+        const next_color = settings.attention_color_rgba();
+        const next_rgba = new Gdk.RGBA();
+        if (next_rgba.parse(next_color) && !color_btn.get_rgba().equal(next_rgba)) color_btn.set_rgba(next_rgba);
+        const next_idx = match_preset(next_color);
+        const target_idx = next_idx >= 0 ? next_idx : BORDER_PRESETS.length;
+        if (preset_combo.get_active() !== target_idx) preset_combo.set_active(target_idx);
     };
-    const f_keys = ['icon-size', 'icon-opacity', 'icon-saturation', 'icon-brightness', 'icon-contrast'];
+    const f_keys = ['icon-size', 'icon-opacity', 'icon-saturation', 'icon-brightness', 'icon-contrast', 'attention-color-rgba'];
     for (const k of f_keys) {
         if (ext_settings.settings_schema?.has_key(k)) signals.push([ext_settings, ext_settings.connect(`changed::${k}`, sync_fx)]);
     }

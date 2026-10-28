@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Libadwaita Preferences About & Support page for Shoal.
+// Libadwaita Preferences About & Support page and color preset definitions for Shoal.
 
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
+
+export const BORDER_PRESETS = Object.freeze([
+    Object.freeze(['Gruvbox Amber', 'rgb(251,184,108)']),
+    Object.freeze(['Kelp Emerald', 'rgb(46,194,126)']),
+    Object.freeze(['Ocean Cyan', 'rgb(106,215,225)']),
+    Object.freeze(['Coral Red', 'rgb(255,0,0)']),
+]);
 
 function add_link_row(group, title, subtitle, button_label, url, fallback_url = null) {
     const row = new Adw.ActionRow({ title, subtitle });
@@ -28,7 +35,7 @@ function add_link_row(group, title, subtitle, button_label, url, fallback_url = 
     group.add(row);
 }
 
-export function build_about_page(version_name = 'v1.3.0') {
+export function build_about_page(version_name = 'v1.4.0') {
     const page = new Adw.PreferencesPage({
         title: 'About & Support',
         icon_name: 'help-about-symbolic',
@@ -44,7 +51,7 @@ export function build_about_page(version_name = 'v1.3.0') {
         title: 'Shoal Release Version',
         subtitle: 'Zero-subprocess, zero-telemetry StatusNotifierWatcher extension for GNOME Shell',
     });
-    const clean_ver = String(version_name || '1.3.0').replace(/^v/, '');
+    const clean_ver = String(version_name || '1.4.0').replace(/^v/, '');
     ver_row.add_suffix(new Gtk.Label({
         label: `v${clean_ver}`, valign: Gtk.Align.CENTER, css_classes: ['monospace'],
     }));
