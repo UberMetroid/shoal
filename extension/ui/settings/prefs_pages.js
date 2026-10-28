@@ -28,7 +28,7 @@ function add_link_row(group, title, subtitle, button_label, url, fallback_url = 
     group.add(row);
 }
 
-export function build_about_page() {
+export function build_about_page(version_name = 'v1.3.0') {
     const page = new Adw.PreferencesPage({
         title: 'About & Support',
         icon_name: 'help-about-symbolic',
@@ -44,8 +44,9 @@ export function build_about_page() {
         title: 'Shoal Release Version',
         subtitle: 'Zero-subprocess, zero-telemetry StatusNotifierWatcher extension for GNOME Shell',
     });
+    const clean_ver = String(version_name || '1.3.0').replace(/^v/, '');
     ver_row.add_suffix(new Gtk.Label({
-        label: 'v1.2.0', valign: Gtk.Align.CENTER, css_classes: ['monospace'],
+        label: `v${clean_ver}`, valign: Gtk.Align.CENTER, css_classes: ['monospace'],
     }));
     header_group.add(ver_row);
 

@@ -23,6 +23,7 @@ function make_spin_row(title, subtitle, value, min, max, step, on_change) {
     spin.set_valign(Gtk.Align.CENTER);
     spin.connect('value-changed', () => on_change(spin.get_value_as_int()));
     row.add_suffix(spin);
+    row.activatable_widget = spin;
     return [row, spin];
 }
 
@@ -33,6 +34,7 @@ function make_combo_row(title, subtitle, items, active_idx, on_change) {
     combo.set_active(Math.max(0, active_idx));
     combo.connect('changed', () => on_change(combo.get_active()));
     row.add_suffix(combo);
+    row.activatable_widget = combo;
     return [row, combo];
 }
 
@@ -95,7 +97,9 @@ function build_tray_page(ext_settings, settings, signals) {
         title: 'Reset to Shoal Defaults',
         subtitle: 'Restore Right Box placement, compact spacing, full-color icons, and default mouse actions',
     });
-    const reset_btn = new Gtk.Button({ label: 'Reset Defaults', valign: Gtk.Align.CENTER, css_classes: ['suggested-action'] });
+    const reset_btn = new Gtk.Button({
+        label: 'Reset Defaults', valign: Gtk.Align.CENTER, css_classes: ['destructive-action', 'pill'],
+    });
     reset_btn.connect('clicked', () => settings.reset_defaults());
     reset_row.add_suffix(reset_btn);
     reset_row.activatable_widget = reset_btn;
@@ -185,11 +189,12 @@ export default class ShoalPreferences extends ExtensionPreferences {
         window.set_default_size(760, 680);
         window.add(build_tray_page(ext_settings, settings, signals));
         window.add(build_icons_page(ext_settings, settings, signals));
-        window.add(build_about_page());
-        window.connect('close-request', () => {
+        window.add(build_about_page(this.metadata?.['version-name']));
+        const cleanup = () => {
             for (const [obj, sig] of signals) obj.disconnect(sig);
             signals.length = 0;
-            return false;
-        });
+        };
+        window.connect('close-request', () => { cleanup(); return false; });
+        window.connect('destroy', cleanup);
     }
 }
